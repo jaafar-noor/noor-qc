@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0b5cab"><link rel="icon" href="icon-192.png"><title>نظام فحص الجودة – نور</title>
+<style>
+:root{--bg:#f4f6f8;--fg:#1b2430;--card:#fff;--bd:#d5dbe3;--pri:#0b5cab;--ok:#1a8f4c;--no:#c62828;--hold:#d98a00;--na:#6b7785;--mut:#5d6b7a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10161d;--fg:#e8edf2;--card:#1a232d;--bd:#34414f;--pri:#5aa6f0;--mut:#9aa8b6;--ok:#42c27c;--no:#ef6b6b;--hold:#f0b240;--na:#93a0ae}}
+:root[data-theme="dark"]{--bg:#10161d;--fg:#e8edf2;--card:#1a232d;--bd:#34414f;--pri:#5aa6f0;--mut:#9aa8b6;--ok:#42c27c;--no:#ef6b6b;--hold:#f0b240;--na:#93a0ae}
+*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,"Segoe UI",Tahoma,Arial,sans-serif;min-height:100%}
+#app{max-width:720px;margin:0 auto;padding:12px 12px 90px}
+h1{font-size:19px;margin:6px 0}h2{font-size:17px;margin:18px 0 8px;color:var(--pri)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin:10px 0}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.mut{color:var(--mut);font-size:14px}
+label{display:block;font-size:14px;color:var(--mut);margin:10px 0 3px}
+input,select,textarea{width:100%;font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:9px}
+textarea{min-height:60px;margin-top:8px}
+button{font:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:8px;padding:9px 12px}
+button:disabled{opacity:.6}
+.b{background:var(--pri);color:#fff;border-color:var(--pri)}.d{color:var(--no);border-color:var(--no)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:1}.row>button{flex:0 0 auto}
+.nav{display:flex;gap:6px;overflow-x:auto;margin:8px 0}.nav button{flex:0 0 auto}.nav .on{background:var(--pri);color:#fff}
+.q{white-space:pre-line;font-size:15px}.it{border-bottom:1px solid var(--bd);padding:10px 0}.it:last-child{border:0}
+.rs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}.rs button{padding:8px 2px;font-size:13px}
+.r.on{color:#fff}.r.ok.on{background:var(--ok)}.r.no.on{background:var(--no)}.r.hold.on{background:var(--hold)}.r.na.on{background:var(--na)}
+.tp{display:block;width:100%;text-align:right;margin:6px 0;padding:14px}
+.tag{font-size:12px;padding:2px 8px;border-radius:99px;border:1px solid var(--bd)}
+canvas.sig{width:100%;height:110px;border:1px dashed var(--mut);border-radius:8px;background:#fff;touch-action:none}
+.bar{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--bd);padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));display:flex;gap:8px;justify-content:center}
+.bar button{flex:1;max-width:340px}
+.ov{position:fixed;inset:0;background:#000;z-index:9;display:flex;flex-direction:column;gap:8px;padding:12px}.ov video{width:100%;flex:1;min-height:0;object-fit:cover;border-radius:8px}
+#t{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 14px;border-radius:8px;z-index:10;display:none;max-width:90%}
+</style>
+</head>
+<body>
+<div id="app">جارٍ التحميل…</div><div id="t"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const A=document.getElementById('app'),$=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const R=[['ok','مقبول'],['no','غير مقبول'],['hold','معلّق'],['na','لا ينطبق']];
+const RN=k=>(R.find(x=>x[0]==k)||[0,''])[1];
+const ROLE={manager:'مدير الجودة',inspector:'مفتش جودة',admin:'مسؤول التقارير'};
+const ST={draft:'مسودة',sent:'مُرسل',approved:'معتمد'};
+const F0={types:['عداد CT','عداد CT/VT','لوحة CT لاحقة الدفع','لوحة المدينة'],
+panel:['سعة اللوحة مطابقة لسعة المحولة و مقطع ونوع الكابلات مناسبان لقدرة العداد والقاطع','اطراف الكيبلات: الموصلات مثبتة بالكامل، لا نحاس مكشوف، لا أسلاك مقطوعة، والكابل مثبّت ومشدود بإحكام دون إجهاد على الأطراف','التحقق من اتجاه دخول وخروج الكيبلات و ألوان الأطوار وتسلسلها صحيحان, neutral والأرضي موصولان','التحقق من إعدادات القاطع (MCCB) للوحات المقياس','لا يوجد تجاوز (Bypass) أو وصلة جانبية أو تلاعب قبل العداد أو حوله','لا يوجد قاطع دائرة أو عازل أو فيوز قبل العداد','الهوائي مركّب بإحكام وفي موضع مناسب للاستقبال، والتوصيل محكم\nشريحة SIM مركّبة في المقياس ومستوى إشارة الشبكة في الموقع جيد بعد التشغيل','الغلاف الخاص بالمقياس يغلق جيداً وسليم ونظيف؛ أُزيلت الأدوات والمخلفات','تشغيل اللوحة والتأكد من عملها بشكل كامل مع وصول الكهرباء الى الزبون','تطبيق قفل وتأشير العزل (LOTO) بعد التنصيب والفحص والتشغيل, للمقياس واللوحة بأقفال خاصة'],
+meter:['اطراف الكيبلات: الموصلات مثبتة بالكامل، لا نحاس مكشوف، لا أسلاك مقطوعة، والكابل مثبّت ومشدود بإحكام دون إجهاد على الأطراف','التحقق من اتجاه دخول وخروج الكيبلات و ألوان الأطوار وتسلسلها صحيحان, neutral والأرضي موصولان','لا يوجد تجاوز (Bypass) أو وصلة جانبية أو تلاعب قبل العداد أو حوله','لا يوجد قاطع دائرة أو عازل أو فيوز قبل العداد','الهوائي مركّب بإحكام وفي موضع مناسب للاستقبال، والتوصيل محكم\nشريحة SIM مركّبة في المقياس ومستوى إشارة الشبكة في الموقع جيد بعد التشغيل','الغلاف الخاص بالمقياس يغلق جيداً وسليم ونظيف؛ أُزيلت الأدوات والمخلفات','تشغيل المقياس والتأكد من عمله بشكل كامل مع وصول الكهرباء الى الزبون','تطبيق قفل وتأشير العزل (LOTO) بعد التنصيب والفحص والتشغيل, للمقياس بأقفال خاصة']};
+let S={u:null,users:[],reports:[],F:null,rep:null,v:'login',mi:0},db=null;
+const get=(o,p)=>p.split('.').reduce((a,k)=>a?.[k],o);
+const set=(o,p,v)=>{const k=p.split('.'),l=k.pop();let c=o;for(const x of k){c[x]??={};c=c[x]}c[l]=v};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const now=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16);
+const hash=async p=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('noor|'+p)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+function toast(m){const t=$('#t');t.textContent=m;t.style.display='block';clearTimeout(toast.i);toast.i=setTimeout(()=>t.style.display='none',3200)}
+const API='https://script.google.com/macros/s/AKfycbwQVUTNwPKQdxV6ehkb0DYg_M31BSYW-k1RQgZO1fR9RXfCvsslvSCj0k3YkFUdXnu5/exec';
+async function api(o){try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...S.cred,...o})});return await r.json()}catch{return{error:'net'}}}
+async function loadF(){const r=await api({act:'list',col:'forms'}),f=(r.items||[]).find(x=>x.id=='main');if(f){delete f.id;S.F=f}else S.F=structuredClone(F0)}
+const b64=u=>{let s='';for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s)};
+async function upload(r){const n=(r.bld||'report').replace(/[\\/:*?"<>|]/g,'')+' - '+(r.date||'').slice(0,10)+' - '+r.id.slice(-4)+'.xlsx';const q=await api({act:'upload',filename:n,b64:b64(wb(0,r))});return !!q.url}
+async function loadR(){const r=await api({act:'list',col:'reports'});S.reports=(r.items||[]).sort((a,b)=>(b.upd||0)-(a.upd||0))}
+async function enter(){A.innerHTML='جارٍ التحميل…';await loadF();await loadR();S.v=S.u.role=='admin'?'reports':'home';render()}
+const fld=(l,p,t='text',x='')=>`<label>${l}</label><input type="${t}" data-p="${p}" value="${esc(get(S,p))}" ${x}>`;
+function grp(base,ro){const a=get(S,base)||{};return `<div class="rs">${R.map(([k,l])=>`<button class="r ${k} ${a.r==k?'on':''}" data-a="res" data-p="${base}.r" data-v="${k}" ${ro?'disabled':''}>${l}</button>`).join('')}</div>${a.r?`<textarea data-p="${base}.n" placeholder="السبب / الملاحظات" ${ro?'disabled':''}>${esc(a.n)}</textarea>`:''}`}
+const items=(list,base,ro)=>list.map((t,i)=>`<div class="it"><div class="q"><b>${i+1}.</b> ${esc(t)}</div>${grp(base+'.'+i,ro)}</div>`).join('');
+const sig=(p,ro,l)=>`<label>${l}</label><canvas class="sig" data-p="${p}" ${ro?'data-ro=1':''}></canvas>${ro?'':`<button data-a="clrsig" data-p="${p}">مسح التوقيع</button>`}`;
+function nav(){const u=S.u,t=[['home','فحص جديد']];if(u.role!='inspector')t.push(['reports','التقارير']);if(u.role=='manager')t.push(['users','المستخدمون'],['forms','النماذج']);if(u.role=='admin')t.splice(0,1);
+return `<div class="top"><h1>نظام فحص الجودة – نور</h1><span class="mut">${esc(u.name)} · ${ROLE[u.role]} <button data-a="out">خروج</button></span></div><div class="nav">${t.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.v==k?'on':''}">${l}</button>`).join('')}</div>`}
+const repRow=(r,x)=>`<div class="card"><b>${esc(r.bld||'بدون اسم')}</b> <span class="tag">${ST[r.status]}</span><div class="mut">${esc(r.type)} · ${esc(r.ownerName)} · ${esc((r.date||'').replace('T',' '))}</div><div class="row" style="margin-top:8px"><button data-a="open" data-id="${r.id}">فتح</button>${x}</div></div>`;
+const V={
+login:()=>`<div class="card"><h1>${S.hasUsers?'تسجيل الدخول':'إعداد أول حساب: مدير الجودة'}</h1>${fld('الاسم','x','text','id="un"')}<label>كلمة المرور</label><input type="password" id="pw"><button class="b" style="width:100%;margin-top:14px" data-a="${S.hasUsers?'login':'setup'}">${S.hasUsers?'دخول':'إنشاء الحساب'}</button></div>`,
+home:()=>{const mine=S.reports.filter(r=>r.owner==S.u.id);return nav()+`<h2>اختر ما ستفحصه</h2>`+S.F.types.map(t=>`<button class="tp b" data-a="new" data-t="${esc(t)}">${esc(t)}</button>`).join('')+`<h2>فحوصاتي</h2>`+(mine.map(r=>repRow(r,r.status=='draft'?'<button class="d" data-a="delr" data-id="'+r.id+'">حذف</button>':'<button data-a="exp" data-id="'+r.id+'">تصدير Excel</button>')).join('')||'<div class="mut">لا توجد فحوصات بعد</div>')},
+reports:()=>{const ex=S.u.role!='inspector';return nav()+(ex&&S.reports.length?'<button class="b" data-a="expall" style="width:100%">تصدير ملخص كل التقارير (Excel)</button>':'')+S.reports.map(r=>repRow(r,(ex?`<button data-a="exp" data-id="${r.id}">تصدير Excel</button>`:'')+(S.u.role=='manager'?`<button class="d" data-a="delr" data-id="${r.id}">حذف</button>`:''))).join('')||'<div class="mut">لا توجد تقارير</div>'},
+users:()=>nav()+`<div class="card"><b>مستخدم جديد</b>${fld('الاسم','nu.n','text')}${fld('كلمة المرور','nu.p','password')}<label>الدور</label><select data-p="nu.r">${Object.entries(ROLE).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select><button class="b" style="margin-top:10px" data-a="addu">إضافة</button></div>`+S.users.map(u=>`<div class="card"><b>${esc(u.name)}</b><label>الدور</label><select data-a="urole" data-id="${u.id}">${Object.entries(ROLE).map(([k,l])=>`<option value="${k}" ${u.role==k?'selected':''}>${l}</option>`).join('')}</select><label>كلمة مرور جديدة</label><div class="row"><input type="password" id="p${u.id}"><button data-a="upw" data-id="${u.id}">تغيير</button>${u.id!=S.u.id?`<button class="d" data-a="delu" data-id="${u.id}">حذف</button>`:''}</div></div>`).join(''),
+forms:()=>{const L=(k,t)=>`<h2>${t}</h2>`+S.F[k].map((x,i)=>`<div class="card"><textarea data-p="F.${k}.${i}" style="margin:0">${esc(x)}</textarea><button class="d" data-a="deli" data-k="${k}" data-i="${i}">حذف البند</button></div>`).join('')+`<button data-a="addi" data-k="${k}">+ إضافة بند</button>`;
+return nav()+`<h2>أنواع العمل (سطر لكل نوع)</h2><textarea id="tt" style="min-height:110px">${esc(S.F.types.join('\n'))}</textarea>`+L('panel','بنود فحص اللوحة / العداد CT')+L('meter','بنود فحص المقياس الفرعي')+`<div class="bar"><button class="b" data-a="saveF">حفظ النماذج</button></div><div class="mut" style="margin-top:12px">التعديل يسري على الفحوصات الجديدة فقط.</div>`},
+form:()=>{const r=S.rep,ro=r.status!='draft'||r.owner!=S.u.id,pn=/لوحة/.test(r.type),mg=S.u.role=='manager';
+return `<div class="top"><button data-a="go" data-v="${S.u.role=='admin'?'reports':'home'}">‹ رجوع</button><span class="tag">${ST[r.status]}</span></div><h1>إستمارة الفحص بعد التنصيب</h1><div class="mut">NOOR-FRM-QC-01-F-01 · Rev 2 · ${esc(r.type)}</div>
+<div class="card">${fld('الاسم التجاري للمبنى حسب ال FDM','rep.bld','text',ro?'disabled':'')}${fld('التاريخ والوقت','rep.date','datetime-local',ro?'disabled':'')}<label>الموقع</label><div class="row"><button data-a="gps" ${ro?'disabled':''}>📍 تحديد موقعي</button><span class="mut">${esc(r.loc)||'لم يُحدد'}</span></div>${fld('أقرب نقطة دالة','rep.near','text',ro?'disabled':'')}${fld(pn?'الرقم التسلسلي للوحة':'رقم المقياس الذكي','rep.serial','text',ro?'disabled':'')}<label>نوع المقياس</label><select data-p="rep.phase" ${ro?'disabled':''}><option value="">—</option>${['أحادي الطور','ثلاثي الطور'].map(x=>`<option ${r.phase==x?'selected':''}>${x}</option>`).join('')}</select>${fld('سعة المحولة','rep.cap','text',ro?'disabled':'')}</div>
+<h2>قائمة الفحص</h2><div class="card">${items(r.tp.panel,'rep.ans',ro)}</div>
+<h2>تقييم حالة اللوحة / المقياس</h2><div class="card">${grp('rep.assess',ro)}</div>
+<h2>التقييم العام</h2><div class="card">${grp('rep.overall',ro)}<label>سبب عدم القبول / التعليق والإجراء المطلوب</label><textarea data-p="rep.reason" ${ro?'disabled':''}>${esc(r.reason)}</textarea></div>
+<h2>المقاييس الفرعية (${r.meters.length})</h2>${r.meters.map((m,i)=>`<div class="card"><b>${i+1}. ${esc(m.serial||'بدون رقم')}</b> <span class="mut">${esc(m.phase)} · ${RN(m.assess?.r)||'—'}</span><div class="row" style="margin-top:8px"><button data-a="editm" data-i="${i}">${ro?'عرض':'تعديل'}</button>${ro?'':`<button class="d" data-a="delm" data-i="${i}">حذف</button>`}</div></div>`).join('')}${ro?'':'<button class="b" data-a="addm" style="width:100%">+ إضافة مقياس ذكي</button>'}
+<h2>التوقيع</h2><div class="card"><div class="mut">مفتش الجودة: ${esc(r.ownerName)} ${r.signDate?'· '+esc(r.signDate.replace('T',' ')):''}</div>${sig('rep.sig',ro,'توقيع المفتش (بالإصبع)')}</div>
+${r.status!='draft'&&(mg||r.status=='approved')?`<h2>موافقة مسؤول القسم</h2><div class="card">${r.appr?.by?`<div class="mut">${esc(r.appr.by)} · ${esc((r.appr.date||'').replace('T',' '))}</div>`:''}${sig('rep.appr.sig',r.status=='approved'||!mg,'توقيع المدير')}${mg&&r.status=='sent'?'<button class="b" style="width:100%;margin-top:10px" data-a="appr">اعتماد التقرير</button>':''}</div>`:''}
+${ro?'':'<div class="bar"><button data-a="draft">حفظ مسودة</button><button class="b" data-a="send">إرسال النموذج</button></div>'}`},
+meter:()=>{const r=S.rep,i=S.mi,m=r.meters[i],ro=r.status!='draft'||r.owner!=S.u.id,b=`rep.meters.${i}`;
+return `<div class="top"><button data-a="back">‹ رجوع للنموذج</button><b>مقياس فرعي رقم ${i+1}</b></div><div class="card"><label>الرقم التسلسلي للمقياس</label><div class="row"><input data-p="${b}.serial" value="${esc(m.serial)}" ${ro?'disabled':''}>${ro?'':`<button data-a="scan" data-p="${b}.serial">📷 مسح الباركود</button>`}</div><label>نوع المقياس</label><select data-p="${b}.phase" ${ro?'disabled':''}><option value="">—</option>${['أحادي الطور','ثلاثي الطور'].map(x=>`<option ${m.phase==x?'selected':''}>${x}</option>`).join('')}</select></div><div class="card">${items(r.tp.meter,b+'.ans',ro)}</div><h2>تقييم حالة المقياس</h2><div class="card">${grp(b+'.assess',ro)}</div>${ro?'':`<div class="bar"><button data-a="back">حفظ والعودة</button><button class="b" data-a="addm">+ مقياس آخر</button></div>`}`}};
+function render(){const y=scrollY;if(!S.F)S.F=structuredClone(F0);A.innerHTML=V[S.v]();scrollTo(0,y);document.querySelectorAll('canvas.sig').forEach(initSig)}
+function initSig(c){c.width=600;c.height=220;const x=c.getContext('2d'),p=c.dataset.p,v=get(S,p);x.lineWidth=4;x.lineCap='round';x.strokeStyle='#111';if(v){const im=new Image();im.onload=()=>x.drawImage(im,0,0);im.src=v}if(c.dataset.ro)return;let d=0;const pt=e=>{const b=c.getBoundingClientRect();return[(e.clientX-b.left)*600/b.width,(e.clientY-b.top)*220/b.height]};c.onpointerdown=e=>{d=1;c.setPointerCapture(e.pointerId);x.beginPath();x.moveTo(...pt(e))};c.onpointermove=e=>{if(d){x.lineTo(...pt(e));x.stroke()}};c.onpointerup=()=>{if(d){d=0;set(S,p,c.toDataURL())}}}
+async function persist(st){const r=S.rep;if(st)r.status=st;r.upd=Date.now();const q=await api({act:'set',col:'reports',id:r.id,data:r});if(q.error){toast('تعذّر الحفظ ('+q.error+')');throw new Error(q.error)}const i=S.reports.findIndex(x=>x.id==r.id);if(i<0)S.reports.unshift(structuredClone(r));else S.reports[i]=structuredClone(r)}
+const conf=b=>{if(!b.dataset.c){b.dataset.c=1;b.textContent='اضغط للتأكيد';return false}return true};
+async function scan(p){const o=document.createElement('div');o.className='ov';o.innerHTML='<video playsinline muted></video><button class="b">إغلاق</button>';document.body.appendChild(o);const v=o.querySelector('video');let stop=0,st,z;const end=()=>{stop=1;try{z?.reset()}catch{}st?.getTracks().forEach(t=>t.stop());o.remove()};o.querySelector('button').onclick=end;const done=t=>{if(stop)return;set(S,p,t);end();render();toast('تمت القراءة: '+t)};
+try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});v.srcObject=st;await v.play();
+if('BarcodeDetector' in window){const d=new BarcodeDetector();(async function lp(){if(stop)return;try{const c=await d.detect(v);if(c[0])return done(c[0].rawValue)}catch{}setTimeout(lp,250)})()}
+else{await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});z=new ZXing.BrowserMultiFormatReader();z.decodeFromVideoElement(v,r=>{if(r)done(r.getText())})}}
+catch{end();toast('تعذّر فتح الكاميرا، أدخل الرقم يدوياً')}}
+function wb(list,single){const w=XLSX.utils.book_new(),L=a=>RN(a?.r);
+if(single){const r=single,a=[['مجموعة ربان السفينة | نور لإدارة أنظمة الطاقة الذكية | قسم الرقابة النوعية'],['إستمارة الفحص بعد التنصيب','Rev: 2','Doc. No.: NOOR-FRM-QC-01-F-01'],[],['الاسم التجاري للمبنى حسب ال FDM',r.bld,'التاريخ',(r.date||'').replace('T',' ')],['الموقع',r.loc,'أقرب نقطة دالة',r.near],['نوع العمل',r.type,'الرقم التسلسلي',r.serial],['نوع المقياس',r.phase,'سعة المحولة',r.cap],[],['#','بند الفحص','النتيجة','السبب / الملاحظات']];
+r.tp.panel.forEach((t,i)=>a.push([i+1,t,L(r.ans[i]),r.ans[i]?.n||'']));a.push([],['تقييم حالة اللوحة / المقياس','',L(r.assess),r.assess?.n||''],['التقييم العام','',L(r.overall)],['سبب عدم القبول / الإجراء المطلوب',r.reason],[],['الدور','الاسم','التاريخ / الوقت','التوقيع'],['مفتش الجودة',r.ownerName,(r.signDate||'').replace('T',' '),r.sig?'موقّع':''],['موافقة مسؤول القسم',r.appr?.by||'',(r.appr?.date||'').replace('T',' '),r.appr?.sig?'موقّع':'']);
+const s=XLSX.utils.aoa_to_sheet(a);s['!cols']=[{wch:28},{wch:70},{wch:16},{wch:40}];XLSX.utils.book_append_sheet(w,s,'النموذج');
+const m=[['#','الرقم التسلسلي للمقياس','النوع','التقييم','ملاحظات التقييم']];r.meters.forEach((x,i)=>m.push([i+1,x.serial,x.phase,L(x.assess),x.assess?.n||'']));
+r.meters.forEach((x,i)=>{m.push([],['مقياس '+(i+1)+': '+x.serial],['#','بند الفحص','النتيجة','السبب / الملاحظات']);r.tp.meter.forEach((t,j)=>m.push([j+1,t,L(x.ans?.[j]),x.ans?.[j]?.n||'']))});
+const s2=XLSX.utils.aoa_to_sheet(m);s2['!cols']=[{wch:6},{wch:60},{wch:16},{wch:40}];XLSX.utils.book_append_sheet(w,s2,'المقاييس الفرعية')}
+else{const a=[['#','الاسم التجاري للمبنى','نوع العمل','الرقم التسلسلي','التاريخ','المفتش','عدد المقاييس','التقييم العام','الحالة']];list.forEach((r,i)=>a.push([i+1,r.bld,r.type,r.serial,(r.date||'').replace('T',' '),r.ownerName,r.meters.length,L(r.overall),ST[r.status]]));const s=XLSX.utils.aoa_to_sheet(a);s['!cols']=[{wch:5},{wch:30},{wch:22},{wch:20},{wch:18},{wch:18},{wch:12},{wch:14},{wch:10}];XLSX.utils.book_append_sheet(w,s,'ملخص')}
+w.Workbook={Views:[{RTL:true}]};return new Uint8Array(XLSX.write(w,{type:'array',bookType:'xlsx'}))}
+function dl(name,data){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+const ACT={
+async login(){const n=$('#un').value.trim(),h=await hash($('#pw').value);S.cred={name:n,hash:h};const r=await api({act:'login'});if(!r.user){S.cred=null;return toast(r.error=='net'?'تعذّر الاتصال بالخادم':'الاسم أو كلمة المرور غير صحيحة')}S.u=r.user;try{localStorage.setItem('noorC',JSON.stringify(S.cred))}catch{}enter()},
+async setup(){const n=$('#un').value.trim(),p=$('#pw').value;if(!n||p.length<4)return toast('أدخل الاسم وكلمة مرور (٤ أحرف على الأقل)');const id=uid(),h=await hash(p);S.cred={name:n,hash:h};const r=await api({act:'setup',id,name:n,hash:h});if(!r.user){S.cred=null;return toast('تعذّر إنشاء الحساب')}S.u=r.user;S.hasUsers=true;try{localStorage.setItem('noorC',JSON.stringify(S.cred))}catch{}enter()},
+out(){S.u=null;S.cred=null;try{localStorage.removeItem('noorC')}catch{}S.v='login';render()},
+async go(b){S.v=b.dataset.v;S.rep=null;render();scrollTo(0,0);if(S.v=='reports'||S.v=='home'){await loadR();render()}if(S.v=='users'){const r=await api({act:'list',col:'users'});S.users=r.items||[];render()}},
+new(b){S.rep={id:uid(),owner:S.u.id,ownerName:S.u.name,status:'draft',type:b.dataset.t,bld:'',date:now(),loc:'',near:'',serial:'',phase:'',cap:'',ans:{},assess:{},overall:{},reason:'',meters:[],sig:'',tp:{panel:[...S.F.panel],meter:[...S.F.meter]}};S.v='form';render();scrollTo(0,0)},
+open(b){S.rep=structuredClone(S.reports.find(r=>r.id==b.dataset.id));S.v='form';render();scrollTo(0,0)},
+res(b){const p=b.dataset.p;set(S,p,get(S,p)==b.dataset.v?'':b.dataset.v);render()},
+clrsig(b){set(S,b.dataset.p,'');render()},
+gps(){navigator.geolocation.getCurrentPosition(p=>{S.rep.loc=p.coords.latitude.toFixed(6)+', '+p.coords.longitude.toFixed(6);render()},()=>toast('تعذّر تحديد الموقع، فعّل صلاحية الموقع'),{enableHighAccuracy:true,timeout:15000})},
+scan(b){scan(b.dataset.p)},
+addm(){S.rep.meters.push({serial:'',phase:'',ans:{},assess:{}});S.mi=S.rep.meters.length-1;S.v='meter';render();scrollTo(0,0)},
+editm(b){S.mi=+b.dataset.i;S.v='meter';render();scrollTo(0,0)},
+delm(b){if(conf(b)){S.rep.meters.splice(+b.dataset.i,1);render()}},
+back(){S.v='form';render()},
+async draft(){await persist();toast('تم حفظ المسودة')},
+async send(){const r=S.rep;if(!r.bld.trim())return toast('أدخل اسم المبنى حسب FDM');if(!r.serial.trim())return toast('أدخل الرقم التسلسلي');if(r.tp.panel.some((_,i)=>!r.ans[i]?.r))return toast('أجب عن كل بنود الفحص');if(!r.overall?.r)return toast('اختر التقييم العام');if(r.meters.some(m=>!m.serial))return toast('أدخل رقم كل مقياس فرعي');if(!r.sig)return toast('وقّع في خانة التوقيع');r.signDate=now();await persist('sent');const up=await upload(r);toast(up?'تم الإرسال ورفع الملف إلى Drive':'تم الإرسال، لكن تعذّر الرفع إلى Drive. صدّر الملف يدوياً');S.v=S.u.role=='admin'?'reports':'home';S.rep=null;render()},
+async appr(){const r=S.rep;if(!r.appr?.sig)return toast('وقّع أولاً');r.appr.by=S.u.name;r.appr.date=now();await persist('approved');toast('تم الاعتماد');render()},
+async delr(b){if(!conf(b))return;await api({act:'del',col:'reports',id:b.dataset.id});S.reports=S.reports.filter(r=>r.id!=b.dataset.id);render()},
+exp(b){const r=S.reports.find(x=>x.id==b.dataset.id);dl('QC-'+(r.date||'').slice(0,10)+'-'+r.id.slice(-4)+'.xlsx',wb(0,r))},
+expall(){dl('QC-summary.xlsx',wb(S.reports))},
+async addu(){const n=S.nu?.n?.trim(),p=S.nu?.p;if(!n||!p||p.length<4)return toast('أدخل الاسم وكلمة مرور (٤ أحرف على الأقل)');if(S.users.some(u=>u.name==n))return toast('الاسم مستخدم');const id=uid(),u={name:n,hash:await hash(p),role:S.nu.r||'manager'};const q=await api({act:'set',col:'users',id,data:u});if(q.error)return toast('تعذّرت الإضافة');S.users.push({id,name:u.name,role:u.role});S.nu={};render()},
+async urole(b){const u=S.users.find(x=>x.id==b.dataset.id);u.role=b.value;await api({act:'set',col:'users',id:u.id,data:{name:u.name,role:u.role}});toast('تم تغيير الدور')},
+async upw(b){const v=$('#p'+b.dataset.id).value;if(v.length<4)return toast('٤ أحرف على الأقل');const u=S.users.find(x=>x.id==b.dataset.id),h=await hash(v);await api({act:'set',col:'users',id:u.id,data:{name:u.name,role:u.role,hash:h}});if(u.id==S.u.id){S.cred.hash=h;try{localStorage.setItem('noorC',JSON.stringify(S.cred))}catch{}}toast('تم تغيير كلمة المرور')},
+async delu(b){if(!conf(b))return;await api({act:'del',col:'users',id:b.dataset.id});S.users=S.users.filter(u=>u.id!=b.dataset.id);render()},
+addi(b){S.F[b.dataset.k].push('');render()},
+deli(b){if(conf(b)){S.F[b.dataset.k].splice(+b.dataset.i,1);render()}},
+async saveF(){S.F.types=$('#tt').value.split('\n').map(x=>x.trim()).filter(Boolean);await api({act:'set',col:'forms',id:'main',data:S.F});toast('تم حفظ النماذج')}};
+A.addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(b&&!b.disabled)ACT[b.dataset.a]?.(b)});
+A.addEventListener('input',e=>{const p=e.target.dataset.p;if(p&&!e.target.dataset.a)set(S,p,e.target.value)});
+A.addEventListener('change',e=>{if(e.target.tagName=='SELECT'&&e.target.dataset.a)ACT[e.target.dataset.a](e.target)});
+(async()=>{try{S.cred=JSON.parse(localStorage.getItem('noorC')||'null')}catch{}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+const st=await api({act:'status'});if(st.error){A.innerHTML='<div class="card">تعذّر الاتصال بالخادم. تحقق من الإنترنت ثم أعد فتح التطبيق.</div>';return}
+S.hasUsers=st.hasUsers;
+if(S.cred){const r=await api({act:'login'});if(r.user){S.u=r.user;return enter()}S.cred=null}
+render()})();
+</script>
+</body>
+</html>
