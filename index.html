@@ -37,6 +37,7 @@ canvas.sig{width:100%;height:110px;border:1px dashed var(--mut);border-radius:8p
 <body>
 <div id="app">جارٍ التحميل…</div><div id="t"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script>
 const A=document.getElementById('app'),$=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -58,7 +59,7 @@ const API='https://script.google.com/macros/s/AKfycbwQVUTNwPKQdxV6ehkb0DYg_M31BS
 async function api(o){try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...S.cred,...o})});return await r.json()}catch{return{error:'net'}}}
 async function loadF(){const r=await api({act:'list',col:'forms'}),f=(r.items||[]).find(x=>x.id=='main');if(f){delete f.id;S.F=f}else S.F=structuredClone(F0)}
 const b64=u=>{let s='';for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s)};
-async function upload(r){const n=(r.bld||'report').replace(/[\\/:*?"<>|]/g,'')+' - '+(r.date||'').slice(0,10)+' - '+r.id.slice(-4)+'.xlsx';const q=await api({act:'upload',filename:n,b64:b64(wb(0,r))});return !!q.url}
+async function upload(r){const n=(r.bld||'report').replace(/[\\/:*?"<>|]/g,'')+' - '+(r.date||'').slice(0,10)+' - '+r.id.slice(-4)+'.xlsx';const q=await api({act:'upload',filename:n,b64:b64(await xl(r))});return !!q.url}
 async function loadR(){const r=await api({act:'list',col:'reports'});S.reports=(r.items||[]).sort((a,b)=>(b.upd||0)-(a.upd||0))}
 async function enter(){A.innerHTML='جارٍ التحميل…';await loadF();await loadR();S.v=S.u.role=='admin'?'reports':'home';render()}
 const fld=(l,p,t='text',x='')=>`<label>${l}</label><input type="${t}" data-p="${p}" value="${esc(get(S,p))}" ${x}>`;
@@ -96,6 +97,57 @@ try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment
 if('BarcodeDetector' in window){const d=new BarcodeDetector();(async function lp(){if(stop)return;try{const c=await d.detect(v);if(c[0])return done(c[0].rawValue)}catch{}setTimeout(lp,250)})()}
 else{await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});z=new ZXing.BrowserMultiFormatReader();z.decodeFromVideoElement(v,r=>{if(r)done(r.getText())})}}
 catch{end();toast('تعذّر فتح الكاميرا، أدخل الرقم يدوياً')}}
+async function xl(r){
+const W=new ExcelJS.Workbook(),NAVY='FF1F3864',GR='FFF2F2F2',BL='FF8EA9DB',th={style:'thin'},BD={top:th,left:th,bottom:th,right:th};
+const fl=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}});
+const SC={ok:['FFC6EFCE','FF006100'],no:['FFFFC7CE','FF9C0006'],hold:['FFFFEB9C','FF9C5700'],na:['FFD9D9D9','FF404040'],ne:['FFD9D9D9','FF404040']};
+const dt=s=>(s||'').replace('T',' '),pn=/\d/;
+function put(ws,rg,v,o={}){const c=ws.getCell(rg.split(':')[0]);c.value=v;c.font={name:'Arial',size:o.sz||10,bold:!!o.b,color:{argb:o.c||'FF000000'},underline:!!o.u};c.alignment={horizontal:o.h||'center',vertical:'middle',wrapText:true};c.border=BD;if(o.f)c.fill=fl(o.f);if(rg.includes(':'))ws.mergeCells(rg)}
+const lbl=(ws,rg,v,o={})=>put(ws,rg,v,{b:1,h:'right',f:GR,...o});
+const link=(ws,rg,t,to,o={})=>put(ws,rg,{text:t,hyperlink:"#'"+to+"'!A1"},{b:1,c:'FF0563C1',u:1,...o});
+const sh=(name,tab)=>{const ws=W.addWorksheet(name,{properties:{tabColor:{argb:tab}},views:[{rightToLeft:true,showGridLines:false}],pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0}});ws.columns=[6,58,13,13,13,13,22,28].map(width=>({width}));
+put(ws,'A1:B1','');put(ws,'C1:F1','مجموعة ربان السفينة\nنور لأدارة انظمة الطاقة الذكية',{sz:16});put(ws,'G1:H1','');ws.getRow(1).height=90.75;
+put(ws,'A2:H2','إستمارة الفحص بعد التنصيب',{sz:14,b:1,c:NAVY,f:'FFD9E2F3'});ws.getRow(2).height=27.75;
+lbl(ws,'A3:B3','Rev: 2');put(ws,'C3:H3','Doc. No. : NOOR-FRM-QC-01-F-01',{b:1,h:'left',f:GR});ws.getRow(3).height=22.5;return ws};
+const hts=(ws,m)=>Object.entries(m).forEach(([k,v])=>ws.getRow(+k).height=v);
+const ih=t=>Math.max(30,Math.ceil(t.length/50)*15+8);
+function tbl(ws,r0,list,ans,as){put(ws,'A'+r0,'#',{b:1,c:'FFFFFFFF',f:BL});put(ws,'B'+r0,'بند الفحص',{b:1,c:'FFFFFFFF',f:BL});put(ws,`C${r0}:F${r0}`,'الحالة (اختر من القائمة)',{b:1,c:'FFFFFFFF',f:BL});put(ws,`G${r0}:H${r0}`,'السبب / الملاحظات',{b:1,c:'FFFFFFFF',f:BL});ws.getRow(r0).height=27.75;
+list.forEach((t,i)=>{const n=r0+1+i,a=ans?.[i]||{},s=SC[a.r];put(ws,'A'+n,i+1);put(ws,'B'+n,t,{h:'right'});put(ws,`C${n}:F${n}`,RN(a.r),{f:s?.[0],c:s?.[1],b:1});put(ws,`G${n}:H${n}`,a.n||'',{h:'right'});ws.getRow(n).height=ih(t)});
+const n=r0+1+list.length,s=SC[as?.r];lbl(ws,`A${n}:B${n}`,'تقييم حالة اللوحة / المقياس',{sz:11});put(ws,'C'+n,RN(as?.r),{b:1,sz:11,f:s?.[0],c:s?.[1]});lbl(ws,'D'+n,'الملاحظات',{sz:11,h:'center'});put(ws,`E${n}:H${n}`,as?.n||'',{h:'right'});ws.getRow(n).height=39.75;return n}
+const done=(list,ans,as)=>list.every((_,i)=>ans?.[i]?.r)&&as?.r?'FF00B050':list.some((_,i)=>ans?.[i]?.r)||as?.r?'FFC00000':'FFBFBFBF';
+const P=r.tp.panel,M=r.tp.meter,ms=r.meters,F1='F1 بعد التنصيب',nm=i=>'مقياس '+(i+1),d10=dt(r.date).slice(0,10);
+const A=sh(F1,NAVY);
+lbl(A,'A4:B4','الاسم التجاري للمبنى حسب ال FDM');put(A,'C4:E4',r.bld);lbl(A,'F4:G4','التاريخ');put(A,'H4',dt(r.date));
+lbl(A,'A5:B5','الموقع');put(A,'C5:E5',r.loc);lbl(A,'F5:G5','أقرب نقطة دالة');put(A,'H5',r.near);
+lbl(A,'A6:B6','معرّف اللوحة / رقمها التسلسلي');put(A,'C6:E6',r.serial);lbl(A,'F6:G6','عدد المقايس الذكية الفرعية');put(A,'H6',ms.length);
+lbl(A,'A7:B7','نوع العمل');put(A,'C7:E7',r.type);lbl(A,'F7:G7','سعة المحوّلة');put(A,'H7',r.cap);
+const dc=done(P,r.ans,r.assess);put(A,'A8:H8','قائمة فحص: '+r.type,{b:1,sz:11,h:'right',c:'FFFFFFFF',f:dc});
+lbl(A,'A9:B9','نوع المقياس / اللوحة');put(A,'C9:H9',r.phase);hts(A,{4:21.75,5:21.75,6:21.75,7:21.75,8:21.75,9:27});
+let n=tbl(A,10,P,r.ans,r.assess)+2;
+put(A,`A${n}:H${n}`,'المقاييس الفرعية — اضغط على رقم المقياس للانتقال إليه',{b:1,sz:11,h:'right',c:'FFFFFFFF',f:NAVY});A.getRow(n).height=24;n++;
+const cl=['A:B','C:D','E:F','G:H'];if(!ms.length){put(A,`A${n}:H${n}`,'لا توجد مقاييس فرعية');A.getRow(n++).height=22.5}
+else for(let i=0;i<ms.length;i+=4){cl.forEach((c,j)=>{const k=i+j,[a,b]=c.split(':');if(k<ms.length)link(A,`${a}${n}:${b}${n}`,nm(k),nm(k));else put(A,`${a}${n}:${b}${n}`,'')});A.getRow(n++).height=22.5}
+link(A,`A${n}:H${n}`,'◄ الانتقال إلى ملخص المقاييس الفرعية','الملخص',{sz:11});A.getRow(n).height=24;n+=2;
+const os=SC[r.overall?.r];lbl(A,`A${n}:B${n}`,'التقييم العام');put(A,`C${n}:H${n}`,RN(r.overall?.r),{b:1,sz:11,f:os?.[0],c:os?.[1]});A.getRow(n).height=24;n++;
+lbl(A,`A${n}:B${n}`,'سبب عدم القبول / التعليق والإجراء المطلوب');put(A,`C${n}:H${n}`,r.reason||'',{h:'right'});A.getRow(n).height=48;n+=2;
+const H=(a,t)=>put(A,a,t,{b:1,c:'FFFFFFFF',f:NAVY});H(`A${n}:B${n}`,'الدور');H(`C${n}:D${n}`,'الاسم');H(`E${n}:F${n}`,'التوقيع');H(`G${n}:H${n}`,'التاريخ / الوقت');A.getRow(n).height=24;n++;
+const img=(ws,s,row)=>{if(s&&s.startsWith('data:image')){const id=W.addImage({base64:s,extension:'png'});ws.addImage(id,{tl:{col:4.1,row:row-1+.08},ext:{width:175,height:64}})}};
+[['مفتش الجودة',r.ownerName,r.sig,r.signDate],['موافقة مسؤول القسم',r.appr?.by,r.appr?.sig,r.appr?.date]].forEach(([role,who,sg,d])=>{lbl(A,`A${n}:B${n}`,role);put(A,`C${n}:D${n}`,who||'');put(A,`E${n}:F${n}`,'');put(A,`G${n}:H${n}`,dt(d));img(A,sg,n);A.getRow(n).height=54.75;n++});
+const S=sh('الملخص','FF00B050'),fm=ms.filter(m=>m.serial||Object.keys(m.ans||{}).length||m.assess?.r),stt=m=>RN(m.assess?.r)||'لم يُقيَّم';
+lbl(S,'A4:B4','الاسم التجاري للمبنى حسب ال FDM');put(S,'C4:E4',r.bld);lbl(S,'F4:G4','التاريخ');put(S,'H4',d10);
+link(S,'A5:H5','◄ العودة إلى الصفحة الرئيسية',F1);put(S,'A6:H6','ملخّص المقاييس الفرعية',{b:1,sz:11,h:'right',c:'FFFFFFFF',f:NAVY});
+const cnt=k=>ms.filter(m=>m.assess?.r==k).length;
+lbl(S,'A7:B7','عدد المقاييس الفرعية المملوءة');put(S,'C7:E7',fm.length,{b:1,sz:11});lbl(S,'F7:G7','عدد المقبول');put(S,'H7',cnt('ok'),{b:1,sz:11});
+lbl(S,'A8:B8','عدد غير المقبول');put(S,'C8:E8',cnt('no'),{b:1,sz:11});lbl(S,'F8:G8','عدد المعلّق / غير المقيَّم');put(S,'H8',ms.length-cnt('ok')-cnt('no'),{b:1,sz:11});
+put(S,'A9','#',{b:1,c:'FFFFFFFF',f:BL});put(S,'B9','الاسم التجاري للمبنى حسب ال FDM',{b:1,c:'FFFFFFFF',f:BL});put(S,'C9:D9','الرقم التسلسلي للمقياس الفرعي',{b:1,c:'FFFFFFFF',f:BL});put(S,'E9:F9','التاريخ',{b:1,c:'FFFFFFFF',f:BL});put(S,'G9:H9','الحالة',{b:1,c:'FFFFFFFF',f:BL});hts(S,{5:22.5,6:24,7:21.75,8:21.75,9:27.75});
+ms.forEach((m,i)=>{const k=10+i,t=stt(m),s=SC[m.assess?.r||'ne'];link(S,'A'+k,String(i+1),nm(i));put(S,'B'+k,r.bld,{h:'right'});put(S,`C${k}:D${k}`,m.serial||'');put(S,`E${k}:F${k}`,d10);put(S,`G${k}:H${k}`,t,{b:1,f:s[0],c:s[1]});S.getRow(k).height=22.5});
+ms.forEach((m,i)=>{const ws=sh(nm(i),BL);lbl(ws,'A4:B4','الاسم التجاري للمبنى حسب ال FDM');put(ws,'C4:E4',r.bld);lbl(ws,'F4:G4','التاريخ');put(ws,'H4',d10);
+lbl(ws,'A5:B5','معرّف اللوحة / رقمها التسلسلي');put(ws,'C5:H5',r.serial);link(ws,'A6:H6','◄ العودة إلى الصفحة الرئيسية',F1);
+put(ws,'A7:H7','مقياس فرعي رقم '+(i+1),{b:1,sz:11,h:'right',c:'FFFFFFFF',f:done(M,m.ans,m.assess)});
+lbl(ws,'A8:B8','الرقم التسلسلي للمقياس الفرعي');put(ws,'C8:H8',m.serial||'');lbl(ws,'A9:B9','نوع المقياس');put(ws,'C9:H9',m.phase||'');
+hts(ws,{4:21.75,5:21.75,6:22.5,7:24,8:24.75,9:24.75});tbl(ws,10,M,m.ans,m.assess)});
+return new Uint8Array(await W.xlsx.writeBuffer())}
+
 function wb(list,single){const w=XLSX.utils.book_new(),L=a=>RN(a?.r);
 if(single){const r=single,a=[['مجموعة ربان السفينة | نور لإدارة أنظمة الطاقة الذكية | قسم الرقابة النوعية'],['إستمارة الفحص بعد التنصيب','Rev: 2','Doc. No.: NOOR-FRM-QC-01-F-01'],[],['الاسم التجاري للمبنى حسب ال FDM',r.bld,'التاريخ',(r.date||'').replace('T',' ')],['الموقع',r.loc,'أقرب نقطة دالة',r.near],['نوع العمل',r.type,'الرقم التسلسلي',r.serial],['نوع المقياس',r.phase,'سعة المحولة',r.cap],[],['#','بند الفحص','النتيجة','السبب / الملاحظات']];
 r.tp.panel.forEach((t,i)=>a.push([i+1,t,L(r.ans[i]),r.ans[i]?.n||'']));a.push([],['تقييم حالة اللوحة / المقياس','',L(r.assess),r.assess?.n||''],['التقييم العام','',L(r.overall)],['سبب عدم القبول / الإجراء المطلوب',r.reason],[],['الدور','الاسم','التاريخ / الوقت','التوقيع'],['مفتش الجودة',r.ownerName,(r.signDate||'').replace('T',' '),r.sig?'موقّع':''],['موافقة مسؤول القسم',r.appr?.by||'',(r.appr?.date||'').replace('T',' '),r.appr?.sig?'موقّع':'']);
@@ -125,7 +177,7 @@ async draft(){await persist();toast('تم حفظ المسودة')},
 async send(){const r=S.rep;if(!r.bld.trim())return toast('أدخل اسم المبنى حسب FDM');if(!r.serial.trim())return toast('أدخل الرقم التسلسلي');if(r.tp.panel.some((_,i)=>!r.ans[i]?.r))return toast('أجب عن كل بنود الفحص');if(!r.overall?.r)return toast('اختر التقييم العام');if(r.meters.some(m=>!m.serial))return toast('أدخل رقم كل مقياس فرعي');if(!r.sig)return toast('وقّع في خانة التوقيع');r.signDate=now();await persist('sent');const up=await upload(r);toast(up?'تم الإرسال ورفع الملف إلى Drive':'تم الإرسال، لكن تعذّر الرفع إلى Drive. صدّر الملف يدوياً');S.v=S.u.role=='admin'?'reports':'home';S.rep=null;render()},
 async appr(){const r=S.rep;if(!r.appr?.sig)return toast('وقّع أولاً');r.appr.by=S.u.name;r.appr.date=now();await persist('approved');toast('تم الاعتماد');render()},
 async delr(b){if(!conf(b))return;await api({act:'del',col:'reports',id:b.dataset.id});S.reports=S.reports.filter(r=>r.id!=b.dataset.id);render()},
-exp(b){const r=S.reports.find(x=>x.id==b.dataset.id);dl('QC-'+(r.date||'').slice(0,10)+'-'+r.id.slice(-4)+'.xlsx',wb(0,r))},
+async exp(b){const r=S.reports.find(x=>x.id==b.dataset.id);try{dl('QC-'+(r.date||'').slice(0,10)+'-'+r.id.slice(-4)+'.xlsx',await xl(r))}catch(e){toast('تعذّر إنشاء ملف Excel')}},
 expall(){dl('QC-summary.xlsx',wb(S.reports))},
 async addu(){const n=S.nu?.n?.trim(),p=S.nu?.p;if(!n||!p||p.length<4)return toast('أدخل الاسم وكلمة مرور (٤ أحرف على الأقل)');if(S.users.some(u=>u.name==n))return toast('الاسم مستخدم');const id=uid(),u={name:n,hash:await hash(p),role:S.nu.r||'manager'};const q=await api({act:'set',col:'users',id,data:u});if(q.error)return toast('تعذّرت الإضافة');S.users.push({id,name:u.name,role:u.role});S.nu={};render()},
 async urole(b){const u=S.users.find(x=>x.id==b.dataset.id);u.role=b.value;await api({act:'set',col:'users',id:u.id,data:{name:u.name,role:u.role}});toast('تم تغيير الدور')},
