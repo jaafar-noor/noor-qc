@@ -36,67 +36,80 @@ canvas.sig{width:100%;height:110px;border:1px dashed var(--mut);border-radius:8p
 </head>
 <body>
 <div id="app">جارٍ التحميل…</div><div id="t"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script>
 const A=document.getElementById('app'),$=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const R=[['ok','مقبول'],['no','غير مقبول'],['hold','معلّق'],['na','لا ينطبق']];
-const RN=k=>(R.find(x=>x[0]==k)||[0,''])[1];
-const ROLE={manager:'مدير الجودة',inspector:'مفتش جودة',admin:'مسؤول التقارير'};
-const ST={draft:'مسودة',sent:'مُرسل',approved:'معتمد'};
-const F0={types:['عداد CT','عداد CT/VT','لوحة CT لاحقة الدفع','لوحة المدينة'],
-panel:['سعة اللوحة مطابقة لسعة المحولة و مقطع ونوع الكابلات مناسبان لقدرة العداد والقاطع','اطراف الكيبلات: الموصلات مثبتة بالكامل، لا نحاس مكشوف، لا أسلاك مقطوعة، والكابل مثبّت ومشدود بإحكام دون إجهاد على الأطراف','التحقق من اتجاه دخول وخروج الكيبلات و ألوان الأطوار وتسلسلها صحيحان, neutral والأرضي موصولان','التحقق من إعدادات القاطع (MCCB) للوحات المقياس','لا يوجد تجاوز (Bypass) أو وصلة جانبية أو تلاعب قبل العداد أو حوله','لا يوجد قاطع دائرة أو عازل أو فيوز قبل العداد','الهوائي مركّب بإحكام وفي موضع مناسب للاستقبال، والتوصيل محكم\nشريحة SIM مركّبة في المقياس ومستوى إشارة الشبكة في الموقع جيد بعد التشغيل','الغلاف الخاص بالمقياس يغلق جيداً وسليم ونظيف؛ أُزيلت الأدوات والمخلفات','تشغيل اللوحة والتأكد من عملها بشكل كامل مع وصول الكهرباء الى الزبون','تطبيق قفل وتأشير العزل (LOTO) بعد التنصيب والفحص والتشغيل, للمقياس واللوحة بأقفال خاصة'],
-meter:['اطراف الكيبلات: الموصلات مثبتة بالكامل، لا نحاس مكشوف، لا أسلاك مقطوعة، والكابل مثبّت ومشدود بإحكام دون إجهاد على الأطراف','التحقق من اتجاه دخول وخروج الكيبلات و ألوان الأطوار وتسلسلها صحيحان, neutral والأرضي موصولان','لا يوجد تجاوز (Bypass) أو وصلة جانبية أو تلاعب قبل العداد أو حوله','لا يوجد قاطع دائرة أو عازل أو فيوز قبل العداد','الهوائي مركّب بإحكام وفي موضع مناسب للاستقبال، والتوصيل محكم\nشريحة SIM مركّبة في المقياس ومستوى إشارة الشبكة في الموقع جيد بعد التشغيل','الغلاف الخاص بالمقياس يغلق جيداً وسليم ونظيف؛ أُزيلت الأدوات والمخلفات','تشغيل المقياس والتأكد من عمله بشكل كامل مع وصول الكهرباء الى الزبون','تطبيق قفل وتأشير العزل (LOTO) بعد التنصيب والفحص والتشغيل, للمقياس بأقفال خاصة']};
-let S={u:null,users:[],reports:[],F:null,rep:null,v:'login',mi:0},db=null;
+const R=[['ok','مقبول'],['no','غير مقبول'],['hold','معلّق'],['na','لا ينطبق']],RN=k=>(R.find(x=>x[0]==k)||[0,''])[1];
+const ROLE={manager:'مدير الجودة',inspector:'مفتش جودة',admin:'مسؤول التقارير'},ST={draft:'مسودة',sent:'مُرسل',approved:'معتمد'};
+const COVER='الغلاف الخاص بالمقياس يغلق جيداً وسليم ونظيف؛ أُزيلت الأدوات والمخلفات\nالمقياس الذكي مركّب جيداً وبإحكام';
+const F0={ver:2,types:['عداد CT','عداد CT/VT','لوحة CT لاحقة الدفع','لوحة المدينة'],
+areas:[['A','بيانات حي الجامعة'],['B','صيانة العامرية'],['C','بيانات الكاظمية'],['D','ابو غريب صيانة الزيتون'],['E','ابو غريب صيانة الشهداء'],['F','ابوغريب صيانة النصر والسلام'],['G','الكرخ الجنوبي - عويريج'],['H','الكرخ الجنوبي - بيانات الرشيد'],['I','بيانات الزعفرانية'],['J','الكرخ الجنوبي - المحمودية'],['K','الكرخ الجنوبي - صيانة الزمبرانية']].map(([l,n])=>({l,n})),
+panel:['سعة اللوحة مطابقة لسعة المحولة و مقطع ونوع الكابلات مناسبان لقدرة العداد والقاطع','اطراف الكيبلات: الموصلات مثبتة بالكامل، لا نحاس مكشوف، لا أسلاك مقطوعة، والكابل مثبّت ومشدود بإحكام دون إجهاد على الأطراف','التحقق من اتجاه دخول وخروج الكيبلات و ألوان الأطوار وتسلسلها صحيحان, neutral والأرضي موصولان','التحقق من إعدادات القاطع (MCCB) للوحات المقياس','لا يوجد تجاوز (Bypass) أو وصلة جانبية أو تلاعب قبل العداد أو حوله','الهوائي مركّب بإحكام وفي موضع مناسب للاستقبال، والتوصيل محكم\nشريحة SIM مركّبة في المقياس ومستوى إشارة الشبكة في الموقع جيد بعد التشغيل',COVER,'تشغيل اللوحة والتأكد من عملها بشكل كامل مع وصول الكهرباء الى الزبون','تطبيق قفل وتأشير العزل (LOTO) بعد التنصيب والفحص والتشغيل, للمقياس واللوحة بأقفال خاصة'],
+meter:['اطراف الكيبلات: الموصلات مثبتة بالكامل، لا نحاس مكشوف، لا أسلاك مقطوعة، والكابل مثبّت ومشدود بإحكام دون إجهاد على الأطراف','التحقق من اتجاه دخول وخروج الكيبلات و ألوان الأطوار وتسلسلها صحيحان, neutral والأرضي موصولان','لا يوجد تجاوز (Bypass) أو وصلة جانبية أو تلاعب قبل العداد أو حوله','الهوائي مركّب بإحكام وفي موضع مناسب للاستقبال، والتوصيل محكم\nشريحة SIM مركّبة في المقياس ومستوى إشارة الشبكة في الموقع جيد بعد التشغيل',COVER,'تشغيل المقياس والتأكد من عمله بشكل كامل مع وصول الكهرباء الى الزبون','تطبيق قفل وتأشير العزل (LOTO) بعد التنصيب والفحص والتشغيل, للمقياس بأقفال خاصة']};
+function fixF(F){for(const k of ['panel','meter']){F[k]=(F[k]||F0[k]).filter(t=>!t.includes('لا يوجد قاطع دائرة')).map(t=>t.includes('الغلاف الخاص بالمقياس')&&!t.includes('بإحكام')?COVER:t)}
+if(!F.types?.length)F.types=[...F0.types];if(!F.areas?.length)F.areas=structuredClone(F0.areas);F.ver=2;return F}
+let S={u:null,users:[],reports:[],F:null,rep:null,v:'login',mi:0,cred:null,hasUsers:false,busy:0};
 const get=(o,p)=>p.split('.').reduce((a,k)=>a?.[k],o);
 const set=(o,p,v)=>{const k=p.split('.'),l=k.pop();let c=o;for(const x of k){c[x]??={};c=c[x]}c[l]=v};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const now=()=>new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16);
 const hash=async p=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode('noor|'+p)))].map(b=>b.toString(16).padStart(2,'0')).join('');
-function toast(m){const t=$('#t');t.textContent=m;t.style.display='block';clearTimeout(toast.i);toast.i=setTimeout(()=>t.style.display='none',3200)}
+function toast(m){const t=$('#t');t.textContent=m;t.style.display='block';clearTimeout(toast.i);toast.i=setTimeout(()=>t.style.display='none',4500)}
 const API='https://script.google.com/macros/s/AKfycbwQVUTNwPKQdxV6ehkb0DYg_M31BSYW-k1RQgZO1fR9RXfCvsslvSCj0k3YkFUdXnu5/exec';
-async function api(o){try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...S.cred,...o})});return await r.json()}catch{return{error:'net'}}}
-async function loadF(){const r=await api({act:'list',col:'forms'}),f=(r.items||[]).find(x=>x.id=='main');if(f){delete f.id;S.F=f}else S.F=structuredClone(F0)}
-const b64=u=>{let s='';for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s)};
-async function upload(r){const n=(r.bld||'report').replace(/[\\/:*?"<>|]/g,'')+' - '+(r.date||'').slice(0,10)+' - '+r.id.slice(-4)+'.xlsx';const q=await api({act:'upload',filename:n,b64:b64(await xl(r))});return !!q.url}
-async function loadR(){const r=await api({act:'list',col:'reports'});S.reports=(r.items||[]).sort((a,b)=>(b.upd||0)-(a.upd||0))}
+async function api(o,t=45000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),t);try{const r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...S.cred,...o}),signal:c.signal});return await r.json()}catch(e){return{error:'net'}}finally{clearTimeout(tm)}}
+async function apiR(o,n=3,t){let r;for(let i=0;i<n;i++){r=await api(o,t);if(!r.error||['auth','denied','locked'].includes(r.error))return r;await new Promise(z=>setTimeout(z,1500*(i+1)))}return r}
+async function loadF(){const r=await api({act:'get',col:'forms',id:'main'});S.F=fixF(r.data||structuredClone(F0))}
+async function loadR(){const r=await api({act:'list',col:'reports'});if(r.items)S.reports=r.items.sort((a,b)=>(b.upd||0)-(a.upd||0))}
 async function enter(){A.innerHTML='جارٍ التحميل…';await loadF();await loadR();S.v=S.u.role=='admin'?'reports':'home';render()}
+const mkCode=r=>r.seq?(r.area||'X')+'-NR-'+r.seq:'';
+function meta(r){let bad=0;const c=a=>Object.values(a||{}).forEach(x=>{if(x&&(x.r=='no'||x.r=='hold'))bad++});c(r.ans);(r.meters||[]).forEach(m=>c(m.ans));
+return{id:r.id,owner:r.owner,ownerName:r.ownerName,status:r.status,type:r.type,bld:r.bld,date:r.date,code:r.code||'',upd:r.upd||0,up:r.up||'',areaName:r.areaName||'',rev:r.rev||0,of:r.of||'',bad,doc:r.doc||'',serial:r.serial||'',mc:(r.meters||[]).length,ov:r.overall?.r||''}}
+const backups=()=>{const o=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k.startsWith('noorB:'))o.push([k,JSON.parse(localStorage.getItem(k))])}}catch{}return o};
+async function persist(st){const r0=S.rep;
+try{localStorage.setItem('noorB:'+r0.id,JSON.stringify(r0))}catch{}
+if(!r0.seq){const q=await apiR({act:'newseq'});if(!q.seq){toast('تعذّر إنشاء رمز الموقع ('+q.error+'). تحقق من الإنترنت وأعد المحاولة');throw new Error('seq')}r0.seq=q.seq}
+const r=structuredClone(r0);if(st)r.status=st;r.upd=Date.now();r.code=mkCode(r);
+try{localStorage.setItem('noorB:'+r.id,JSON.stringify(r))}catch{}
+const q=await apiR({act:'set',col:'reports',id:r.id,data:r},3,60000);
+if(q.error){toast('تعذّر الحفظ ('+q.error+'). بياناتك محفوظة على الهاتف — اضغط إرسال مرة أخرى');throw new Error(q.error)}
+try{localStorage.removeItem('noorB:'+r.id)}catch{}
+S.rep=r;S.reports=[meta(r),...S.reports.filter(x=>x.id!=r.id)]}
 const fld=(l,p,t='text',x='')=>`<label>${l}</label><input type="${t}" data-p="${p}" value="${esc(get(S,p))}" ${x}>`;
 function grp(base,ro){const a=get(S,base)||{};return `<div class="rs">${R.map(([k,l])=>`<button class="r ${k} ${a.r==k?'on':''}" data-a="res" data-p="${base}.r" data-v="${k}" ${ro?'disabled':''}>${l}</button>`).join('')}</div>${a.r?`<textarea data-p="${base}.n" placeholder="السبب / الملاحظات" ${ro?'disabled':''}>${esc(a.n)}</textarea>`:''}`}
 const items=(list,base,ro)=>list.map((t,i)=>`<div class="it"><div class="q"><b>${i+1}.</b> ${esc(t)}</div>${grp(base+'.'+i,ro)}</div>`).join('');
 const sig=(p,ro,l)=>`<label>${l}</label><canvas class="sig" data-p="${p}" ${ro?'data-ro=1':''}></canvas>${ro?'':`<button data-a="clrsig" data-p="${p}">مسح التوقيع</button>`}`;
 function nav(){const u=S.u,t=[['home','فحص جديد']];if(u.role!='inspector')t.push(['reports','التقارير']);if(u.role=='manager')t.push(['users','المستخدمون'],['forms','النماذج']);if(u.role=='admin')t.splice(0,1);
 return `<div class="top"><h1>نظام فحص الجودة – نور</h1><span class="mut">${esc(u.name)} · ${ROLE[u.role]} <button data-a="out">خروج</button></span></div><div class="nav">${t.map(([k,l])=>`<button data-a="go" data-v="${k}" class="${S.v==k?'on':''}">${l}</button>`).join('')}</div>`}
-const repRow=(r,x)=>`<div class="card"><b>${esc(r.bld||'بدون اسم')}</b> <span class="tag">${ST[r.status]}</span><div class="mut">${esc(r.type)} · ${esc(r.ownerName)} · ${esc((r.date||'').replace('T',' '))}</div><div class="row" style="margin-top:8px"><button data-a="open" data-id="${r.id}">فتح</button>${x}</div></div>`;
+const repRow=(r,x)=>`<div class="card"><b>${esc(r.bld||'بدون اسم')}</b> <span class="tag">${ST[r.status]}</span>${r.rev?' <span class="tag">إعادة فحص</span>':''}${r.status!='draft'&&!r.up?' <span class="tag" style="color:var(--no)">لم يُرفع إلى Drive</span>':''}<div class="mut">${esc(r.code)} · ${esc(r.areaName)} · ${esc(r.type)}</div><div class="mut">${esc(r.ownerName)} · ${esc((r.date||'').replace('T',' '))}</div><div class="row" style="margin-top:8px"><button data-a="open" data-id="${r.id}">فتح</button>${r.status!='draft'&&!r.up&&S.u.role!='admin'?`<button data-a="reup" data-id="${r.id}">رفع إلى Drive</button>`:''}${x}</div></div>`;
 const V={
 login:()=>`<div class="card"><h1>${S.hasUsers?'تسجيل الدخول':'إعداد أول حساب: مدير الجودة'}</h1>${fld('الاسم','x','text','id="un"')}<label>كلمة المرور</label><input type="password" id="pw"><button class="b" style="width:100%;margin-top:14px" data-a="${S.hasUsers?'login':'setup'}">${S.hasUsers?'دخول':'إنشاء الحساب'}</button></div>`,
-home:()=>{const mine=S.reports.filter(r=>r.owner==S.u.id);return nav()+`<h2>اختر ما ستفحصه</h2>`+S.F.types.map(t=>`<button class="tp b" data-a="new" data-t="${esc(t)}">${esc(t)}</button>`).join('')+`<h2>فحوصاتي</h2>`+(mine.map(r=>repRow(r,r.status=='draft'?'<button class="d" data-a="delr" data-id="'+r.id+'">حذف</button>':'<button data-a="exp" data-id="'+r.id+'">تصدير Excel</button>')).join('')||'<div class="mut">لا توجد فحوصات بعد</div>')},
-reports:()=>{const ex=S.u.role!='inspector';return nav()+(ex&&S.reports.length?'<button class="b" data-a="expall" style="width:100%">تصدير ملخص كل التقارير (Excel)</button>':'')+S.reports.map(r=>repRow(r,(ex?`<button data-a="exp" data-id="${r.id}">تصدير Excel</button>`:'')+(S.u.role=='manager'?`<button class="d" data-a="delr" data-id="${r.id}">حذف</button>`:''))).join('')||'<div class="mut">لا توجد تقارير</div>'},
+home:()=>{const mine=S.reports.filter(r=>r.owner==S.u.id),bk=backups();return nav()+(bk.length?`<h2>فحوصات لم تُحفظ بسبب خطأ</h2>`+bk.map(([k,r])=>`<div class="card"><b>${esc(r.bld||'بدون اسم')}</b> <span class="mut">${esc(r.code)}</span><div class="row" style="margin-top:8px"><button class="b" data-a="restore" data-k="${esc(k)}">استرجاع وإعادة الإرسال</button></div></div>`).join(''):'')+`<h2>اختر ما ستفحصه</h2>`+S.F.types.map(t=>`<button class="tp b" data-a="new" data-t="${esc(t)}">${esc(t)}</button>`).join('')+`<button class="tp" data-a="go" data-v="redo">طلب تعديل (إعادة فحص)</button><h2>فحوصاتي</h2>`+(mine.map(r=>repRow(r,r.status=='draft'?'<button class="d" data-a="delr" data-id="'+r.id+'">حذف</button>':'')).join('')||'<div class="mut">لا توجد فحوصات بعد</div>')},
+redo:()=>{const l=S.reports.filter(r=>r.status!='draft'&&(S.u.role=='manager'||r.owner==S.u.id));return nav()+`<h2>اختر الفحص السابق لتعديله</h2><div class="mut">يُحفظ التعديل كنسخة جديدة «إعادة فحص» ولا يُغيَّر الأصل.</div>`+(l.map(r=>`<div class="card"><b>${esc(r.bld)}</b> <span class="tag">${ST[r.status]}</span>${r.rev?' <span class="tag">إعادة فحص</span>':''}<div class="mut">${esc(r.code)} · ${esc(r.areaName)} · ${esc((r.date||'').replace('T',' '))}</div><div class="mut" style="color:${r.bad?'var(--no)':'var(--ok)'}">${r.bad?'بنود غير مقبولة / معلّقة: '+r.bad:'كل البنود مقبولة'}</div><button class="b" style="margin-top:8px" data-a="mkredo" data-id="${r.id}">تعديل (إعادة فحص)</button></div>`).join('')||'<div class="mut">لا توجد فحوصات مرسلة بعد</div>')},
+reports:()=>{const ex=S.u.role!='inspector';return nav()+(ex&&S.reports.length?'<button class="b" data-a="expall" style="width:100%">تصدير ملخص كل التقارير (Excel)</button>':'')+(S.reports.map(r=>repRow(r,(ex?`<button data-a="exp" data-id="${r.id}">تصدير Excel</button>`:'')+(S.u.role=='manager'?`<button class="d" data-a="delr" data-id="${r.id}">حذف</button>`:''))).join('')||'<div class="mut">لا توجد تقارير</div>')},
 users:()=>nav()+`<div class="card"><b>مستخدم جديد</b>${fld('الاسم','nu.n','text')}${fld('كلمة المرور','nu.p','password')}<label>الدور</label><select data-p="nu.r">${Object.entries(ROLE).map(([k,l])=>`<option value="${k}">${l}</option>`).join('')}</select><button class="b" style="margin-top:10px" data-a="addu">إضافة</button></div>`+S.users.map(u=>`<div class="card"><b>${esc(u.name)}</b><label>الدور</label><select data-a="urole" data-id="${u.id}">${Object.entries(ROLE).map(([k,l])=>`<option value="${k}" ${u.role==k?'selected':''}>${l}</option>`).join('')}</select><label>كلمة مرور جديدة</label><div class="row"><input type="password" id="p${u.id}"><button data-a="upw" data-id="${u.id}">تغيير</button>${u.id!=S.u.id?`<button class="d" data-a="delu" data-id="${u.id}">حذف</button>`:''}</div></div>`).join(''),
 forms:()=>{const L=(k,t)=>`<h2>${t}</h2>`+S.F[k].map((x,i)=>`<div class="card"><textarea data-p="F.${k}.${i}" style="margin:0">${esc(x)}</textarea><button class="d" data-a="deli" data-k="${k}" data-i="${i}">حذف البند</button></div>`).join('')+`<button data-a="addi" data-k="${k}">+ إضافة بند</button>`;
-return nav()+`<h2>أنواع العمل (سطر لكل نوع)</h2><textarea id="tt" style="min-height:110px">${esc(S.F.types.join('\n'))}</textarea>`+L('panel','بنود فحص اللوحة / العداد CT')+L('meter','بنود فحص المقياس الفرعي')+`<div class="bar"><button class="b" data-a="saveF">حفظ النماذج</button></div><div class="mut" style="margin-top:12px">التعديل يسري على الفحوصات الجديدة فقط.</div>`},
-form:()=>{const r=S.rep,ro=r.status!='draft'||r.owner!=S.u.id,pn=/لوحة/.test(r.type),mg=S.u.role=='manager';
-return `<div class="top"><button data-a="go" data-v="${S.u.role=='admin'?'reports':'home'}">‹ رجوع</button><span class="tag">${ST[r.status]}</span></div><h1>إستمارة الفحص بعد التنصيب</h1><div class="mut">NOOR-FRM-QC-01-F-01 · Rev 2 · ${esc(r.type)}</div>
-<div class="card">${fld('الاسم التجاري للمبنى حسب ال FDM','rep.bld','text',ro?'disabled':'')}${fld('التاريخ والوقت','rep.date','datetime-local',ro?'disabled':'')}<label>الموقع</label><div class="row"><button data-a="gps" ${ro?'disabled':''}>📍 تحديد موقعي</button><span class="mut">${esc(r.loc)||'لم يُحدد'}</span></div>${fld('أقرب نقطة دالة','rep.near','text',ro?'disabled':'')}${fld(pn?'الرقم التسلسلي للوحة':'رقم المقياس الذكي','rep.serial','text',ro?'disabled':'')}<label>نوع المقياس</label><select data-p="rep.phase" ${ro?'disabled':''}><option value="">—</option>${['أحادي الطور','ثلاثي الطور'].map(x=>`<option ${r.phase==x?'selected':''}>${x}</option>`).join('')}</select>${fld('سعة المحولة','rep.cap','text',ro?'disabled':'')}</div>
+return nav()+`<h2>أنواع العمل (سطر لكل نوع)</h2><textarea id="tt" style="min-height:110px">${esc(S.F.types.join('\n'))}</textarea><h2>المناطق (حرف + اسم). يظهر الحرف في بداية اسم كل ملف في Drive</h2>`+S.F.areas.map((x,i)=>`<div class="card"><div class="row"><input data-p="F.areas.${i}.l" value="${esc(x.l)}" style="max-width:80px" placeholder="الحرف"><input data-p="F.areas.${i}.n" value="${esc(x.n)}" placeholder="اسم المنطقة"></div><button class="d" data-a="deli" data-k="areas" data-i="${i}">حذف المنطقة</button></div>`).join('')+`<button data-a="addi" data-k="areas">+ إضافة منطقة</button>`+L('panel','بنود فحص اللوحة / العداد CT')+L('meter','بنود فحص المقياس الفرعي')+`<div class="bar"><button class="b" data-a="saveF">حفظ النماذج</button></div><div class="mut" style="margin-top:12px">التعديل يسري على الفحوصات الجديدة فقط.</div>`},
+form:()=>{const r=S.rep,ro=r.status!='draft'||r.owner!=S.u.id,pn=/لوحة/.test(r.type),mg=S.u.role=='manager',d=ro?'disabled':'';
+return `<div class="top"><button data-a="go" data-v="${S.u.role=='admin'?'reports':'home'}">‹ رجوع</button><span><span class="tag">${ST[r.status]}</span>${r.rev?' <span class="tag">إعادة فحص</span>':''}</span></div><h1>إستمارة الفحص بعد التنصيب</h1><div class="mut">${esc(r.doc||'NOOR-FRM-QC-01-F-01')} · Rev 2 · ${esc(r.type)}</div><div class="mut">رمز الموقع: <b>${esc(mkCode(r)||'يُنشأ عند أول حفظ')}</b></div>
+<div class="card">${fld('الاسم التجاري للمبنى حسب ال FDM','rep.bld','text',d)}${fld('التاريخ والوقت','rep.date','datetime-local',d)}<label>الموقع</label><div class="row"><button data-a="gps" ${d}>📍 تحديد موقعي</button><span class="mut">${esc(r.loc)||'لم يُحدد'}</span></div><label>المنطقة</label><select data-a="area" ${d}><option value="">— اختر المنطقة —</option>${S.F.areas.map(a=>`<option value="${esc(a.l)}" ${r.area==a.l?'selected':''}>${esc(a.n)}</option>`).join('')}</select>${fld('أقرب نقطة دالة','rep.near','text',d)}${fld(pn?'الرقم التسلسلي للوحة':'رقم المقياس الذكي','rep.serial','text',d)}${fld('التيار المقنن للوحة (A)','rep.rated','text',d)}${fld('سعة المحولة','rep.cap','text',d)}</div>
 <h2>قائمة الفحص</h2><div class="card">${items(r.tp.panel,'rep.ans',ro)}</div>
 <h2>تقييم حالة اللوحة / المقياس</h2><div class="card">${grp('rep.assess',ro)}</div>
-<h2>التقييم العام</h2><div class="card">${grp('rep.overall',ro)}<label>سبب عدم القبول / التعليق والإجراء المطلوب</label><textarea data-p="rep.reason" ${ro?'disabled':''}>${esc(r.reason)}</textarea></div>
+<h2>التقييم العام</h2><div class="card">${grp('rep.overall',ro)}<label>سبب عدم القبول / التعليق والإجراء المطلوب</label><textarea data-p="rep.reason" ${d}>${esc(r.reason)}</textarea></div>
 <h2>المقاييس الفرعية (${r.meters.length})</h2>${r.meters.map((m,i)=>`<div class="card"><b>${i+1}. ${esc(m.serial||'بدون رقم')}</b> <span class="mut">${esc(m.phase)} · ${RN(m.assess?.r)||'—'}</span><div class="row" style="margin-top:8px"><button data-a="editm" data-i="${i}">${ro?'عرض':'تعديل'}</button>${ro?'':`<button class="d" data-a="delm" data-i="${i}">حذف</button>`}</div></div>`).join('')}${ro?'':'<button class="b" data-a="addm" style="width:100%">+ إضافة مقياس ذكي</button>'}
 <h2>التوقيع</h2><div class="card"><div class="mut">مفتش الجودة: ${esc(r.ownerName)} ${r.signDate?'· '+esc(r.signDate.replace('T',' ')):''}</div>${sig('rep.sig',ro,'توقيع المفتش (بالإصبع)')}</div>
 ${r.status!='draft'&&(mg||r.status=='approved')?`<h2>موافقة مسؤول القسم</h2><div class="card">${r.appr?.by?`<div class="mut">${esc(r.appr.by)} · ${esc((r.appr.date||'').replace('T',' '))}</div>`:''}${sig('rep.appr.sig',r.status=='approved'||!mg,'توقيع المدير')}${mg&&r.status=='sent'?'<button class="b" style="width:100%;margin-top:10px" data-a="appr">اعتماد التقرير</button>':''}</div>`:''}
 ${ro?'':'<div class="bar"><button data-a="draft">حفظ مسودة</button><button class="b" data-a="send">إرسال النموذج</button></div>'}`},
 meter:()=>{const r=S.rep,i=S.mi,m=r.meters[i],ro=r.status!='draft'||r.owner!=S.u.id,b=`rep.meters.${i}`;
-return `<div class="top"><button data-a="back">‹ رجوع للنموذج</button><b>مقياس فرعي رقم ${i+1}</b></div><div class="card"><label>الرقم التسلسلي للمقياس</label><div class="row"><input data-p="${b}.serial" value="${esc(m.serial)}" ${ro?'disabled':''}>${ro?'':`<button data-a="scan" data-p="${b}.serial">📷 مسح الباركود</button>`}</div><label>نوع المقياس</label><select data-p="${b}.phase" ${ro?'disabled':''}><option value="">—</option>${['أحادي الطور','ثلاثي الطور'].map(x=>`<option ${m.phase==x?'selected':''}>${x}</option>`).join('')}</select></div><div class="card">${items(r.tp.meter,b+'.ans',ro)}</div><h2>تقييم حالة المقياس</h2><div class="card">${grp(b+'.assess',ro)}</div>${ro?'':`<div class="bar"><button data-a="back">حفظ والعودة</button><button class="b" data-a="addm">+ مقياس آخر</button></div>`}`}};
+return `<div class="top"><button data-a="back">‹ رجوع للنموذج</button><b>مقياس فرعي رقم ${i+1}</b></div><div class="card">${fld('الرقم التسلسلي للمقياس',b+'.serial','text',ro?'disabled':'')}<label>نوع المقياس</label><select data-p="${b}.phase" ${ro?'disabled':''}><option value="">—</option>${['أحادي الطور','ثلاثي الطور'].map(x=>`<option ${m.phase==x?'selected':''}>${x}</option>`).join('')}</select></div><div class="card">${items(r.tp.meter,b+'.ans',ro)}</div><h2>تقييم حالة المقياس</h2><div class="card">${grp(b+'.assess',ro)}</div>${ro?'':`<div class="bar"><button data-a="back">حفظ والعودة</button><button class="b" data-a="addm">+ مقياس آخر</button></div>`}`}};
 function render(){const y=scrollY;if(!S.F)S.F=structuredClone(F0);A.innerHTML=V[S.v]();scrollTo(0,y);document.querySelectorAll('canvas.sig').forEach(initSig)}
 function initSig(c){c.width=600;c.height=220;const x=c.getContext('2d'),p=c.dataset.p,v=get(S,p);x.lineWidth=4;x.lineCap='round';x.strokeStyle='#111';if(v){const im=new Image();im.onload=()=>x.drawImage(im,0,0);im.src=v}if(c.dataset.ro)return;let d=0;const pt=e=>{const b=c.getBoundingClientRect();return[(e.clientX-b.left)*600/b.width,(e.clientY-b.top)*220/b.height]};c.onpointerdown=e=>{d=1;c.setPointerCapture(e.pointerId);x.beginPath();x.moveTo(...pt(e))};c.onpointermove=e=>{if(d){x.lineTo(...pt(e));x.stroke()}};c.onpointerup=()=>{if(d){d=0;set(S,p,c.toDataURL())}}}
-async function persist(st){const r=S.rep;if(st)r.status=st;r.upd=Date.now();const q=await api({act:'set',col:'reports',id:r.id,data:r});if(q.error){toast('تعذّر الحفظ ('+q.error+')');throw new Error(q.error)}const i=S.reports.findIndex(x=>x.id==r.id);if(i<0)S.reports.unshift(structuredClone(r));else S.reports[i]=structuredClone(r)}
 const conf=b=>{if(!b.dataset.c){b.dataset.c=1;b.textContent='اضغط للتأكيد';return false}return true};
-async function scan(p){const o=document.createElement('div');o.className='ov';o.innerHTML='<video playsinline muted></video><button class="b">إغلاق</button>';document.body.appendChild(o);const v=o.querySelector('video');let stop=0,st,z;const end=()=>{stop=1;try{z?.reset()}catch{}st?.getTracks().forEach(t=>t.stop());o.remove()};o.querySelector('button').onclick=end;const done=t=>{if(stop)return;set(S,p,t);end();render();toast('تمت القراءة: '+t)};
-try{st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});v.srcObject=st;await v.play();
-if('BarcodeDetector' in window){const d=new BarcodeDetector();(async function lp(){if(stop)return;try{const c=await d.detect(v);if(c[0])return done(c[0].rawValue)}catch{}setTimeout(lp,250)})()}
-else{await new Promise((ok,no)=>{const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';s.onload=ok;s.onerror=no;document.head.appendChild(s)});z=new ZXing.BrowserMultiFormatReader();z.decodeFromVideoElement(v,r=>{if(r)done(r.getText())})}}
-catch{end();toast('تعذّر فتح الكاميرا، أدخل الرقم يدوياً')}}
+const b64=u=>{let s='';for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s)};
+const clean=s=>String(s||'').replace(/[\\\/:*?"<>|]/g,' ').replace(/\s+/g,' ').trim();
+const fname=r=>clean((r.code||'')+' '+(r.bld||'report'))+(r.rev?' re-inspected'+(r.rev>1?' '+r.rev:''):'')+(r.status=='approved'?' approved':'')+'.xlsx';
+async function upload(r){try{const q=await api({act:'upload',filename:fname(r),b64:b64(await xl(r))},90000);if(!q.url)return false;await api({act:'markup',id:r.id,url:q.url});r.up=q.url;S.reports=S.reports.map(x=>x.id==r.id?{...x,up:q.url}:x);return true}catch(e){return false}}
+async function full(id){const q=await apiR({act:'get',col:'reports',id});if(!q.data)toast('تعذّر فتح التقرير ('+(q.error||'غير موجود')+')');return q.data}
 async function xl(r){
 const W=new ExcelJS.Workbook(),NAVY='FF1F3864',GR='FFF2F2F2',BL='FF8EA9DB',th={style:'thin'},BD={top:th,left:th,bottom:th,right:th};
 const fl=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}});
@@ -106,9 +119,9 @@ function put(ws,rg,v,o={}){const c=ws.getCell(rg.split(':')[0]);c.value=v;c.font
 const lbl=(ws,rg,v,o={})=>put(ws,rg,v,{b:1,h:'right',f:GR,...o});
 const link=(ws,rg,t,to,o={})=>put(ws,rg,{text:t,hyperlink:"#'"+to+"'!A1"},{b:1,c:'FF0563C1',u:1,...o});
 const sh=(name,tab)=>{const ws=W.addWorksheet(name,{properties:{tabColor:{argb:tab}},views:[{rightToLeft:true,showGridLines:false}],pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0}});ws.columns=[6,58,13,13,13,13,22,28].map(width=>({width}));
-put(ws,'A1:B1','');put(ws,'C1:F1','مجموعة ربان السفينة\nنور لأدارة انظمة الطاقة الذكية',{sz:16});put(ws,'G1:H1','');ws.getRow(1).height=90.75;
+put(ws,'A1:H1','مجموعة ربان السفينة\nنور لأدارة انظمة الطاقة الذكية',{sz:16});ws.getRow(1).height=90.75;
 put(ws,'A2:H2','إستمارة الفحص بعد التنصيب',{sz:14,b:1,c:NAVY,f:'FFD9E2F3'});ws.getRow(2).height=27.75;
-lbl(ws,'A3:B3','Rev: 2');put(ws,'C3:H3','Doc. No. : NOOR-FRM-QC-01-F-01',{b:1,h:'left',f:GR});ws.getRow(3).height=22.5;return ws};
+lbl(ws,'A3:B3','Rev: 2');put(ws,'C3:E3','Doc. No. : '+(r.doc||'NOOR-FRM-QC-01-F-01'),{b:1,h:'left',f:GR});put(ws,'F3:H3','Site Code : '+(r.code||''),{b:1,h:'left',f:GR});ws.getRow(3).height=22.5;return ws};
 const hts=(ws,m)=>Object.entries(m).forEach(([k,v])=>ws.getRow(+k).height=v);
 const ih=t=>Math.max(30,Math.ceil(t.length/50)*15+8);
 function tbl(ws,r0,list,ans,as){put(ws,'A'+r0,'#',{b:1,c:'FFFFFFFF',f:BL});put(ws,'B'+r0,'بند الفحص',{b:1,c:'FFFFFFFF',f:BL});put(ws,`C${r0}:F${r0}`,'الحالة (اختر من القائمة)',{b:1,c:'FFFFFFFF',f:BL});put(ws,`G${r0}:H${r0}`,'السبب / الملاحظات',{b:1,c:'FFFFFFFF',f:BL});ws.getRow(r0).height=27.75;
@@ -118,11 +131,11 @@ const done=(list,ans,as)=>list.every((_,i)=>ans?.[i]?.r)&&as?.r?'FF00B050':list.
 const P=r.tp.panel,M=r.tp.meter,ms=r.meters,F1='F1 بعد التنصيب',nm=i=>'مقياس '+(i+1),d10=dt(r.date).slice(0,10);
 const A=sh(F1,NAVY);
 lbl(A,'A4:B4','الاسم التجاري للمبنى حسب ال FDM');put(A,'C4:E4',r.bld);lbl(A,'F4:G4','التاريخ');put(A,'H4',dt(r.date));
-lbl(A,'A5:B5','الموقع');put(A,'C5:E5',r.loc);lbl(A,'F5:G5','أقرب نقطة دالة');put(A,'H5',r.near);
+lbl(A,'A5:B5','الموقع');put(A,'C5:E5',(r.areaName?r.areaName+' — ':'')+(r.loc||''));lbl(A,'F5:G5','أقرب نقطة دالة');put(A,'H5',r.near);
 lbl(A,'A6:B6','معرّف اللوحة / رقمها التسلسلي');put(A,'C6:E6',r.serial);lbl(A,'F6:G6','عدد المقايس الذكية الفرعية');put(A,'H6',ms.length);
 lbl(A,'A7:B7','نوع العمل');put(A,'C7:E7',r.type);lbl(A,'F7:G7','سعة المحوّلة');put(A,'H7',r.cap);
 const dc=done(P,r.ans,r.assess);put(A,'A8:H8','قائمة فحص: '+r.type,{b:1,sz:11,h:'right',c:'FFFFFFFF',f:dc});
-lbl(A,'A9:B9','نوع المقياس / اللوحة');put(A,'C9:H9',r.phase);hts(A,{4:21.75,5:21.75,6:21.75,7:21.75,8:21.75,9:27});
+lbl(A,'A9:B9','التيار المقنن للوحة (A)');put(A,'C9:H9',r.rated||'');hts(A,{4:21.75,5:21.75,6:21.75,7:21.75,8:21.75,9:27});
 let n=tbl(A,10,P,r.ans,r.assess)+2;
 put(A,`A${n}:H${n}`,'المقاييس الفرعية — اضغط على رقم المقياس للانتقال إليه',{b:1,sz:11,h:'right',c:'FFFFFFFF',f:NAVY});A.getRow(n).height=24;n++;
 const cl=['A:B','C:D','E:F','G:H'];if(!ms.length){put(A,`A${n}:H${n}`,'لا توجد مقاييس فرعية');A.getRow(n++).height=22.5}
@@ -131,7 +144,7 @@ link(A,`A${n}:H${n}`,'◄ الانتقال إلى ملخص المقاييس ال
 const os=SC[r.overall?.r];lbl(A,`A${n}:B${n}`,'التقييم العام');put(A,`C${n}:H${n}`,RN(r.overall?.r),{b:1,sz:11,f:os?.[0],c:os?.[1]});A.getRow(n).height=24;n++;
 lbl(A,`A${n}:B${n}`,'سبب عدم القبول / التعليق والإجراء المطلوب');put(A,`C${n}:H${n}`,r.reason||'',{h:'right'});A.getRow(n).height=48;n+=2;
 const H=(a,t)=>put(A,a,t,{b:1,c:'FFFFFFFF',f:NAVY});H(`A${n}:B${n}`,'الدور');H(`C${n}:D${n}`,'الاسم');H(`E${n}:F${n}`,'التوقيع');H(`G${n}:H${n}`,'التاريخ / الوقت');A.getRow(n).height=24;n++;
-const img=(ws,s,row)=>{if(s&&s.startsWith('data:image')){const id=W.addImage({base64:s,extension:'png'});ws.addImage(id,{tl:{col:4.1,row:row-1+.08},ext:{width:175,height:64}})}};
+const img=(ws,s,row)=>{if(s&&s.startsWith('data:image')){try{const id=W.addImage({base64:s,extension:'png'});ws.addImage(id,{tl:{col:4.1,row:row-1+.08},ext:{width:175,height:64}})}catch(e){}}};
 [['مفتش الجودة',r.ownerName,r.sig,r.signDate],['موافقة مسؤول القسم',r.appr?.by,r.appr?.sig,r.appr?.date]].forEach(([role,who,sg,d])=>{lbl(A,`A${n}:B${n}`,role);put(A,`C${n}:D${n}`,who||'');put(A,`E${n}:F${n}`,'');put(A,`G${n}:H${n}`,dt(d));img(A,sg,n);A.getRow(n).height=54.75;n++});
 const S=sh('الملخص','FF00B050'),fm=ms.filter(m=>m.serial||Object.keys(m.ans||{}).length||m.assess?.r),stt=m=>RN(m.assess?.r)||'لم يُقيَّم';
 lbl(S,'A4:B4','الاسم التجاري للمبنى حسب ال FDM');put(S,'C4:E4',r.bld);lbl(S,'F4:G4','التاريخ');put(S,'H4',d10);
@@ -140,7 +153,7 @@ const cnt=k=>ms.filter(m=>m.assess?.r==k).length;
 lbl(S,'A7:B7','عدد المقاييس الفرعية المملوءة');put(S,'C7:E7',fm.length,{b:1,sz:11});lbl(S,'F7:G7','عدد المقبول');put(S,'H7',cnt('ok'),{b:1,sz:11});
 lbl(S,'A8:B8','عدد غير المقبول');put(S,'C8:E8',cnt('no'),{b:1,sz:11});lbl(S,'F8:G8','عدد المعلّق / غير المقيَّم');put(S,'H8',ms.length-cnt('ok')-cnt('no'),{b:1,sz:11});
 put(S,'A9','#',{b:1,c:'FFFFFFFF',f:BL});put(S,'B9','الاسم التجاري للمبنى حسب ال FDM',{b:1,c:'FFFFFFFF',f:BL});put(S,'C9:D9','الرقم التسلسلي للمقياس الفرعي',{b:1,c:'FFFFFFFF',f:BL});put(S,'E9:F9','التاريخ',{b:1,c:'FFFFFFFF',f:BL});put(S,'G9:H9','الحالة',{b:1,c:'FFFFFFFF',f:BL});hts(S,{5:22.5,6:24,7:21.75,8:21.75,9:27.75});
-ms.forEach((m,i)=>{const k=10+i,t=stt(m),s=SC[m.assess?.r||'ne'];link(S,'A'+k,String(i+1),nm(i));put(S,'B'+k,r.bld,{h:'right'});put(S,`C${k}:D${k}`,m.serial||'');put(S,`E${k}:F${k}`,d10);put(S,`G${k}:H${k}`,t,{b:1,f:s[0],c:s[1]});S.getRow(k).height=22.5});
+ms.forEach((m,i)=>{const k=10+i,t=stt(m),s=SC[m.assess?.r||'ne'];link(S,'A'+k,nm(i),nm(i));put(S,'B'+k,r.bld,{h:'right'});put(S,`C${k}:D${k}`,m.serial||'');put(S,`E${k}:F${k}`,d10);put(S,`G${k}:H${k}`,t,{b:1,f:s[0],c:s[1]});S.getRow(k).height=22.5});
 ms.forEach((m,i)=>{const ws=sh(nm(i),BL);lbl(ws,'A4:B4','الاسم التجاري للمبنى حسب ال FDM');put(ws,'C4:E4',r.bld);lbl(ws,'F4:G4','التاريخ');put(ws,'H4',d10);
 lbl(ws,'A5:B5','معرّف اللوحة / رقمها التسلسلي');put(ws,'C5:H5',r.serial);link(ws,'A6:H6','◄ العودة إلى الصفحة الرئيسية',F1);
 put(ws,'A7:H7','مقياس فرعي رقم '+(i+1),{b:1,sz:11,h:'right',c:'FFFFFFFF',f:done(M,m.ans,m.assess)});
@@ -148,44 +161,48 @@ lbl(ws,'A8:B8','الرقم التسلسلي للمقياس الفرعي');put(ws
 hts(ws,{4:21.75,5:21.75,6:22.5,7:24,8:24.75,9:24.75});tbl(ws,10,M,m.ans,m.assess)});
 return new Uint8Array(await W.xlsx.writeBuffer())}
 
-function wb(list,single){const w=XLSX.utils.book_new(),L=a=>RN(a?.r);
-if(single){const r=single,a=[['مجموعة ربان السفينة | نور لإدارة أنظمة الطاقة الذكية | قسم الرقابة النوعية'],['إستمارة الفحص بعد التنصيب','Rev: 2','Doc. No.: NOOR-FRM-QC-01-F-01'],[],['الاسم التجاري للمبنى حسب ال FDM',r.bld,'التاريخ',(r.date||'').replace('T',' ')],['الموقع',r.loc,'أقرب نقطة دالة',r.near],['نوع العمل',r.type,'الرقم التسلسلي',r.serial],['نوع المقياس',r.phase,'سعة المحولة',r.cap],[],['#','بند الفحص','النتيجة','السبب / الملاحظات']];
-r.tp.panel.forEach((t,i)=>a.push([i+1,t,L(r.ans[i]),r.ans[i]?.n||'']));a.push([],['تقييم حالة اللوحة / المقياس','',L(r.assess),r.assess?.n||''],['التقييم العام','',L(r.overall)],['سبب عدم القبول / الإجراء المطلوب',r.reason],[],['الدور','الاسم','التاريخ / الوقت','التوقيع'],['مفتش الجودة',r.ownerName,(r.signDate||'').replace('T',' '),r.sig?'موقّع':''],['موافقة مسؤول القسم',r.appr?.by||'',(r.appr?.date||'').replace('T',' '),r.appr?.sig?'موقّع':'']);
-const s=XLSX.utils.aoa_to_sheet(a);s['!cols']=[{wch:28},{wch:70},{wch:16},{wch:40}];XLSX.utils.book_append_sheet(w,s,'النموذج');
-const m=[['#','الرقم التسلسلي للمقياس','النوع','التقييم','ملاحظات التقييم']];r.meters.forEach((x,i)=>m.push([i+1,x.serial,x.phase,L(x.assess),x.assess?.n||'']));
-r.meters.forEach((x,i)=>{m.push([],['مقياس '+(i+1)+': '+x.serial],['#','بند الفحص','النتيجة','السبب / الملاحظات']);r.tp.meter.forEach((t,j)=>m.push([j+1,t,L(x.ans?.[j]),x.ans?.[j]?.n||'']))});
-const s2=XLSX.utils.aoa_to_sheet(m);s2['!cols']=[{wch:6},{wch:60},{wch:16},{wch:40}];XLSX.utils.book_append_sheet(w,s2,'المقاييس الفرعية')}
-else{const a=[['#','الاسم التجاري للمبنى','نوع العمل','الرقم التسلسلي','التاريخ','المفتش','عدد المقاييس','التقييم العام','الحالة']];list.forEach((r,i)=>a.push([i+1,r.bld,r.type,r.serial,(r.date||'').replace('T',' '),r.ownerName,r.meters.length,L(r.overall),ST[r.status]]));const s=XLSX.utils.aoa_to_sheet(a);s['!cols']=[{wch:5},{wch:30},{wch:22},{wch:20},{wch:18},{wch:18},{wch:12},{wch:14},{wch:10}];XLSX.utils.book_append_sheet(w,s,'ملخص')}
-w.Workbook={Views:[{RTL:true}]};return new Uint8Array(XLSX.write(w,{type:'array',bookType:'xlsx'}))}
+async function xlAll(list){const W=new ExcelJS.Workbook(),ws=W.addWorksheet('ملخص',{views:[{rightToLeft:true}]});
+ws.columns=[5,22,30,24,20,22,18,12,14,12].map(width=>({width}));
+const h=ws.addRow(['#','رمز الموقع','الاسم التجاري للمبنى','المنطقة','نوع العمل','الرقم التسلسلي','التاريخ','المفتش','عدد المقاييس','التقييم العام','الحالة']);
+h.eachCell(c=>{c.font={name:'Arial',bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF8EA9DB'}};c.alignment={horizontal:'center',vertical:'middle',wrapText:true}});
+list.forEach((r,i)=>ws.addRow([i+1,r.code,r.bld,r.areaName,r.type,r.serial,(r.date||'').replace('T',' '),r.ownerName,r.mc,RN(r.ov),ST[r.status]+(r.rev?' (إعادة فحص)':'')]));
+return new Uint8Array(await W.xlsx.writeBuffer())}
 function dl(name,data){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
 const ACT={
 async login(){const n=$('#un').value.trim(),h=await hash($('#pw').value);S.cred={name:n,hash:h};const r=await api({act:'login'});if(!r.user){S.cred=null;return toast(r.error=='net'?'تعذّر الاتصال بالخادم':'الاسم أو كلمة المرور غير صحيحة')}S.u=r.user;try{localStorage.setItem('noorC',JSON.stringify(S.cred))}catch{}enter()},
 async setup(){const n=$('#un').value.trim(),p=$('#pw').value;if(!n||p.length<4)return toast('أدخل الاسم وكلمة مرور (٤ أحرف على الأقل)');const id=uid(),h=await hash(p);S.cred={name:n,hash:h};const r=await api({act:'setup',id,name:n,hash:h});if(!r.user){S.cred=null;return toast('تعذّر إنشاء الحساب')}S.u=r.user;S.hasUsers=true;try{localStorage.setItem('noorC',JSON.stringify(S.cred))}catch{}enter()},
 out(){S.u=null;S.cred=null;try{localStorage.removeItem('noorC')}catch{}S.v='login';render()},
-async go(b){S.v=b.dataset.v;S.rep=null;render();scrollTo(0,0);if(S.v=='reports'||S.v=='home'){await loadR();render()}if(S.v=='users'){const r=await api({act:'list',col:'users'});S.users=r.items||[];render()}},
-new(b){S.rep={id:uid(),owner:S.u.id,ownerName:S.u.name,status:'draft',type:b.dataset.t,bld:'',date:now(),loc:'',near:'',serial:'',phase:'',cap:'',ans:{},assess:{},overall:{},reason:'',meters:[],sig:'',tp:{panel:[...S.F.panel],meter:[...S.F.meter]}};S.v='form';render();scrollTo(0,0)},
-open(b){S.rep=structuredClone(S.reports.find(r=>r.id==b.dataset.id));S.v='form';render();scrollTo(0,0)},
+async go(b){S.v=b.dataset.v;S.rep=null;render();scrollTo(0,0);if(['reports','home','redo'].includes(S.v)){await loadR();render()}if(S.v=='users'){const r=await api({act:'list',col:'users'});S.users=r.items||[];render()}},
+new(b){S.rep={id:uid(),owner:S.u.id,ownerName:S.u.name,status:'draft',type:b.dataset.t,bld:'',date:now(),loc:'',near:'',area:'',areaName:'',serial:'',rated:'',cap:'',ans:{},assess:{},overall:{},reason:'',meters:[],sig:'',doc:'NOOR-FRM-QC-01-F-01',tp:{panel:[...S.F.panel],meter:[...S.F.meter]}};S.v='form';render();scrollTo(0,0)},
+async open(b){const d=await full(b.dataset.id);if(d){S.rep=d;S.v='form';render();scrollTo(0,0)}},
+async mkredo(b){const o=await full(b.dataset.id);if(!o)return;const root=o.of||o.id,n=S.reports.filter(x=>(x.of||'')==root).length+1;S.rep={...structuredClone(o),id:uid(),of:root,rev:n,doc:'NOOR-FRM-QC-02-F-01',status:'draft',owner:S.u.id,ownerName:S.u.name,date:now(),sig:'',signDate:'',appr:null,up:'',upd:0};S.v='form';render();scrollTo(0,0);toast('هذه نسخة إعادة فحص جديدة، الأصل لا يتغيّر')},
+restore(b){try{S.rep=JSON.parse(localStorage.getItem(b.dataset.k));S.rep.status='draft';S.v='form';render()}catch{toast('تعذّر الاسترجاع')}},
+area(el){const a=S.F.areas.find(x=>x.l==el.value);S.rep.area=a?a.l:'';S.rep.areaName=a?a.n:'';render()},
 res(b){const p=b.dataset.p;set(S,p,get(S,p)==b.dataset.v?'':b.dataset.v);render()},
 clrsig(b){set(S,b.dataset.p,'');render()},
 gps(){navigator.geolocation.getCurrentPosition(p=>{S.rep.loc=p.coords.latitude.toFixed(6)+', '+p.coords.longitude.toFixed(6);render()},()=>toast('تعذّر تحديد الموقع، فعّل صلاحية الموقع'),{enableHighAccuracy:true,timeout:15000})},
-scan(b){scan(b.dataset.p)},
 addm(){S.rep.meters.push({serial:'',phase:'',ans:{},assess:{}});S.mi=S.rep.meters.length-1;S.v='meter';render();scrollTo(0,0)},
 editm(b){S.mi=+b.dataset.i;S.v='meter';render();scrollTo(0,0)},
 delm(b){if(conf(b)){S.rep.meters.splice(+b.dataset.i,1);render()}},
 back(){S.v='form';render()},
-async draft(){await persist();toast('تم حفظ المسودة')},
-async send(){const r=S.rep;if(!r.bld.trim())return toast('أدخل اسم المبنى حسب FDM');if(!r.serial.trim())return toast('أدخل الرقم التسلسلي');if(r.tp.panel.some((_,i)=>!r.ans[i]?.r))return toast('أجب عن كل بنود الفحص');if(!r.overall?.r)return toast('اختر التقييم العام');if(r.meters.some(m=>!m.serial))return toast('أدخل رقم كل مقياس فرعي');if(!r.sig)return toast('وقّع في خانة التوقيع');r.signDate=now();await persist('sent');const up=await upload(r);toast(up?'تم الإرسال ورفع الملف إلى Drive':'تم الإرسال، لكن تعذّر الرفع إلى Drive. صدّر الملف يدوياً');S.v=S.u.role=='admin'?'reports':'home';S.rep=null;render()},
-async appr(){const r=S.rep;if(!r.appr?.sig)return toast('وقّع أولاً');r.appr.by=S.u.name;r.appr.date=now();await persist('approved');toast('تم الاعتماد');render()},
-async delr(b){if(!conf(b))return;await api({act:'del',col:'reports',id:b.dataset.id});S.reports=S.reports.filter(r=>r.id!=b.dataset.id);render()},
-async exp(b){const r=S.reports.find(x=>x.id==b.dataset.id);try{dl('QC-'+(r.date||'').slice(0,10)+'-'+r.id.slice(-4)+'.xlsx',await xl(r))}catch(e){toast('تعذّر إنشاء ملف Excel')}},
-expall(){dl('QC-summary.xlsx',wb(S.reports))},
+async draft(b){if(S.busy)return;S.busy=1;try{await persist();render();toast('تم حفظ المسودة')}catch{}S.busy=0},
+async send(b){if(S.busy)return;const r=S.rep;if(!r.bld.trim())return toast('أدخل اسم المبنى حسب FDM');if(!r.area)return toast('اختر المنطقة');if(!r.serial.trim())return toast('أدخل الرقم التسلسلي');if(!String(r.rated||'').trim())return toast('أدخل التيار المقنن للوحة');if(r.tp.panel.some((_,i)=>!r.ans[i]?.r))return toast('أجب عن كل بنود الفحص');if(!r.overall?.r)return toast('اختر التقييم العام');if(r.meters.some(m=>!m.serial))return toast('أدخل رقم كل مقياس فرعي');if(!r.sig)return toast('وقّع في خانة التوقيع');
+S.busy=1;b.disabled=true;b.textContent='جارٍ الإرسال… لا تغلق الصفحة';r.signDate=now();
+try{await persist('sent')}catch{S.busy=0;b.disabled=false;b.textContent='إرسال النموذج';return}
+b.textContent='جارٍ رفع الملف إلى Drive…';const up=await upload(S.rep);S.busy=0;
+toast(up?'تم الإرسال ورفع الملف إلى Drive ✔':'تم حفظ الفحص وإرساله، لكن تعذّر الرفع إلى Drive. اضغط «رفع إلى Drive» من القائمة');S.v=S.u.role=='admin'?'reports':'home';S.rep=null;render()},
+async reup(b){const d=await full(b.dataset.id);if(!d)return;b.disabled=true;b.textContent='جارٍ الرفع…';const ok=await upload(d);toast(ok?'تم الرفع إلى Drive ✔':'تعذّر الرفع، أعد المحاولة');render()},
+async appr(){const r=S.rep;if(!r.appr?.sig)return toast('وقّع أولاً');r.appr.by=S.u.name;r.appr.date=now();r.up='';if(S.busy)return;S.busy=1;try{await persist('approved')}catch{S.busy=0;return}toast('جارٍ رفع النسخة المعتمدة إلى Drive…');const ok=await upload(S.rep);S.busy=0;toast(ok?'تم الاعتماد ورفع النسخة المعتمدة إلى Drive ✔':'تم الاعتماد، لكن تعذّر الرفع إلى Drive. استخدم «رفع إلى Drive» من التقارير');S.rep=null;S.v='reports';render()},
+async delr(b){if(!conf(b))return;const q=await api({act:'del',col:'reports',id:b.dataset.id});if(q.error)return toast('تعذّر الحذف');S.reports=S.reports.filter(r=>r.id!=b.dataset.id);render()},
+async exp(b){const r=await full(b.dataset.id);if(!r)return;try{dl(fname(r),await xl(r))}catch(e){toast('تعذّر إنشاء ملف Excel')}},
+async expall(){try{dl('QC-summary.xlsx',await xlAll(S.reports))}catch(e){toast('تعذّر إنشاء ملف Excel')}},
 async addu(){const n=S.nu?.n?.trim(),p=S.nu?.p;if(!n||!p||p.length<4)return toast('أدخل الاسم وكلمة مرور (٤ أحرف على الأقل)');if(S.users.some(u=>u.name==n))return toast('الاسم مستخدم');const id=uid(),u={name:n,hash:await hash(p),role:S.nu.r||'manager'};const q=await api({act:'set',col:'users',id,data:u});if(q.error)return toast('تعذّرت الإضافة');S.users.push({id,name:u.name,role:u.role});S.nu={};render()},
 async urole(b){const u=S.users.find(x=>x.id==b.dataset.id);u.role=b.value;await api({act:'set',col:'users',id:u.id,data:{name:u.name,role:u.role}});toast('تم تغيير الدور')},
 async upw(b){const v=$('#p'+b.dataset.id).value;if(v.length<4)return toast('٤ أحرف على الأقل');const u=S.users.find(x=>x.id==b.dataset.id),h=await hash(v);await api({act:'set',col:'users',id:u.id,data:{name:u.name,role:u.role,hash:h}});if(u.id==S.u.id){S.cred.hash=h;try{localStorage.setItem('noorC',JSON.stringify(S.cred))}catch{}}toast('تم تغيير كلمة المرور')},
 async delu(b){if(!conf(b))return;await api({act:'del',col:'users',id:b.dataset.id});S.users=S.users.filter(u=>u.id!=b.dataset.id);render()},
-addi(b){S.F[b.dataset.k].push('');render()},
+addi(b){const k=b.dataset.k;S.F[k].push(k=='areas'?{l:'',n:''}:'');render()},
 deli(b){if(conf(b)){S.F[b.dataset.k].splice(+b.dataset.i,1);render()}},
-async saveF(){S.F.types=$('#tt').value.split('\n').map(x=>x.trim()).filter(Boolean);await api({act:'set',col:'forms',id:'main',data:S.F});toast('تم حفظ النماذج')}};
+async saveF(){S.F.types=$('#tt').value.split('\n').map(x=>x.trim()).filter(Boolean);S.F.areas=S.F.areas.filter(a=>a.l.trim()&&a.n.trim()).map(a=>({l:a.l.trim().toUpperCase(),n:a.n.trim()}));const q=await api({act:'set',col:'forms',id:'main',data:S.F});toast(q.error?'تعذّر الحفظ':'تم حفظ النماذج');render()}};
 A.addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(b&&!b.disabled)ACT[b.dataset.a]?.(b)});
 A.addEventListener('input',e=>{const p=e.target.dataset.p;if(p&&!e.target.dataset.a)set(S,p,e.target.value)});
 A.addEventListener('change',e=>{if(e.target.tagName=='SELECT'&&e.target.dataset.a)ACT[e.target.dataset.a](e.target)});
@@ -195,6 +212,7 @@ const st=await api({act:'status'});if(st.error){A.innerHTML='<div class="card">�
 S.hasUsers=st.hasUsers;
 if(S.cred){const r=await api({act:'login'});if(r.user){S.u=r.user;return enter()}S.cred=null}
 render()})();
+
 </script>
 </body>
 </html>
